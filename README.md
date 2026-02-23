@@ -20,9 +20,9 @@ SolveLicita calcula um **Score de Solvência (0–100)** para municípios brasil
 
 ## Status atual
 
-🚧 **Fase 0 em desenvolvimento** — Relatório público dos 223 municípios da Paraíba
+**Fase 0 em desenvolvimento** — Relatório público dos 223 municípios da Paraíba
 
-- [ ] Coleta SICONFI (223 municípios PB, 2020–2024)
+- [✅] Coleta SICONFI (223 municípios PB, 2020–2024)
 - [ ] Coleta PNCP (licitações PB, 2023–2025)
 - [ ] Coleta CAUC
 - [ ] Coleta DataJud

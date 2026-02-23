@@ -4,7 +4,6 @@ import pandas as pd
 import time
 from pathlib import Path
 
-# Configuração de Diretórios
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 RAW_DIR = BASE_DIR / "data" / "raw" / "siconfi"
 PROCESSED_DIR = BASE_DIR / "data" / "processed"
@@ -14,139 +13,191 @@ PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
 BASE_URL_SICONFI = "https://apidatalake.tesouro.gov.br/ords/siconfi/tt"
 
-# Limitador de concorrência: máximo de 20 requisições simultâneas
-MAX_CONCORRENCIA = 20
+MAX_CONCORRENCIA = 10
 semaforo = asyncio.Semaphore(MAX_CONCORRENCIA)
+
+# Anexos coletados e o que cada um representa no score
+ANEXOS_RREO = [
+    "RREO-Anexo 01",  # Balanço Orçamentário → variável Eorcam (peso 25%)
+    "RREO-Anexo 07",  # Restos a Pagar       → variável Rrestos (peso 20%)
+]
+
+ANEXOS_RGF = [
+    "RGF-Anexo 05",   # Restos a Pagar do RGF (perspectiva quadrimestral)
+]
+
 
 def obter_municipios_pb() -> list:
     url_ibge = "https://servicodados.ibge.gov.br/api/v1/localidades/estados/PB/municipios"
-    print("Buscando malha de municípios no IBGE...")
+    print("Buscando municípios da PB no IBGE...")
     try:
         resposta = httpx.get(url_ibge, timeout=15)
         resposta.raise_for_status()
         municipios = [str(mun["id"]) for mun in resposta.json()]
-        print(f"Sucesso: {len(municipios)} municípios na Paraíba.\n")
+        print(f"  {len(municipios)} municípios encontrados.\n")
         return municipios
     except Exception as e:
-        print(f"Erro ao buscar IBGE: {e}")
-        return ["2504009", "2507507"] 
+        print(f"  Erro ao buscar IBGE: {e}")
+        # Fallback: Campina Grande + João Pessoa para não travar tudo
+        return ["2504100", "2507507"]
 
-async def fetch_com_retry(client: httpx.AsyncClient, url: str, params: dict, tentativas: int = 3):
-    """
-    Faz a requisição com tentativas embutidas (Exponential Backoff).
-    Ideal para lidar com instabilidades em APIs governamentais.
-    """
+
+async def fetch_com_retry(
+    client: httpx.AsyncClient,
+    url: str,
+    params: dict,
+    tentativas: int = 3
+):
     for tentativa in range(tentativas):
         try:
             resposta = await client.get(url, params=params)
-            
-            # Se a requisição for muito rápida, o servidor pode rejeitar (429)
+
             if resposta.status_code == 429:
-                espera = 2 ** tentativa
-                await asyncio.sleep(espera)
+                await asyncio.sleep(2 ** tentativa)
                 continue
-                
+
             resposta.raise_for_status()
             return resposta.json()
-        
+
         except httpx.HTTPStatusError as e:
-            # Siconfi costuma retornar 400 se o ente não entregou o balanço
+            # 400/404 = município não entregou o relatório naquele período
             if e.response.status_code in (400, 404):
-                return None 
+                return None
             await asyncio.sleep(2 ** tentativa)
-            
+
         except httpx.RequestError:
             await asyncio.sleep(2 ** tentativa)
-            
+
     return None
 
-async def extrair_assincrono(client: httpx.AsyncClient, endpoint: str, ano: int, periodo: int, id_ente: str, anexo: str, poder: str = None) -> list:
+
+async def extrair_assincrono(
+    client: httpx.AsyncClient,
+    endpoint: str,
+    ano: int,
+    periodo: int,
+    id_ente: str,
+    anexo: str,
+    poder: str = None
+) -> list:
     url = f"{BASE_URL_SICONFI}/{endpoint}"
     params = {
         "an_exercicio": ano,
         "nr_periodo": periodo,
         "co_tipo_demonstrativo": endpoint.upper(),
         "no_anexo": anexo,
-        "id_ente": id_ente
+        "id_ente": id_ente,
+        "offset": 0,
+        "limit": 5000,
     }
-    if poder and endpoint == 'rgf':
+    if poder and endpoint == "rgf":
         params["co_poder"] = poder
 
     todos_registros = []
     offset = 0
-    limit = 5000
 
-    async with semaforo:  # Garante que só MAX_CONCORRENCIA rodem ao mesmo tempo
+    async with semaforo:
         while True:
             params["offset"] = offset
             dados = await fetch_com_retry(client, url, params)
-            
+
             if not dados or "items" not in dados:
                 break
-                
+
             items = dados.get("items", [])
             todos_registros.extend(items)
-            
+
             if not dados.get("hasMore", False):
                 break
-                
-            offset += limit
-            
+
+            offset += 5000
+
     return todos_registros
 
-async def orquestrar_coleta_assincrona():
+
+async def orquestrar_coleta():
     inicio = time.time()
-    print("=== Iniciando Crawler SICONFI de Alta Performance ===")
-    
+    print("=" * 55)
+    print("  Crawler SICONFI — Municípios da Paraíba")
+    print("=" * 55)
+
     municipios_pb = obter_municipios_pb()
-    anos = [2021, 2022, 2023, 2024, 2025, 2026]
-    
-    # Criamos o cliente assíncrono com pool de conexões otimizado
-    limits = httpx.Limits(max_keepalive_connections=20, max_connections=30)
-    
+
+    # Mantém até 2026: quando novos dados forem publicados, já são coletados
+    anos = [2020, 2021, 2022, 2023, 2024, 2025, 2026]
+
+    limits = httpx.Limits(max_keepalive_connections=10, max_connections=15)
+
     async with httpx.AsyncClient(timeout=45.0, limits=limits) as client:
         tarefas_rreo = []
         tarefas_rgf = []
-        
-        print("Montando as milhares de requisições na memória...")
+
+        print("Montando tarefas...")
         for ano in anos:
             for id_ente in municipios_pb:
-                # Monta as tarefas do RREO
-                for periodo_rreo in range(1, 7):
-                    tarefas_rreo.append(
-                        extrair_assincrono(client, "rreo", ano, periodo_rreo, id_ente, "RREO-Anexo 07")
-                    )
-                # Monta as tarefas do RGF
-                for periodo_rgf in range(1, 4):
-                    tarefas_rgf.append(
-                        extrair_assincrono(client, "rgf", ano, periodo_rgf, id_ente, "RGF-Anexo 05", poder="E")
-                    )
-                    
-        print(f"Total de {len(tarefas_rreo)} requisições RREO e {len(tarefas_rgf)} requisições RGF agendadas.")
-        print("Disparando requisições em paralelo... (Isso pode levar alguns minutos, dependendo da rede)")
-        
-        # Executa tudo de forma concorrente
+                # RREO: bimestral (6 períodos/ano), todos os anexos necessários
+                for periodo in range(1, 7):
+                    for anexo in ANEXOS_RREO:
+                        tarefas_rreo.append(
+                            extrair_assincrono(
+                                client, "rreo", ano, periodo, id_ente, anexo
+                            )
+                        )
+
+                # RGF: quadrimestral (3 períodos/ano)
+                for periodo in range(1, 4):
+                    for anexo in ANEXOS_RGF:
+                        tarefas_rgf.append(
+                            extrair_assincrono(
+                                client, "rgf", ano, periodo, id_ente, anexo, poder="E"
+                            )
+                        )
+
+        total = len(tarefas_rreo) + len(tarefas_rgf)
+        print(f"  {len(tarefas_rreo)} tarefas RREO")
+        print(f"  {len(tarefas_rgf)} tarefas RGF")
+        print(f"  {total} requisições no total\n")
+        print("Executando em paralelo (isso pode levar alguns minutos)...")
+
         resultados_rreo = await asyncio.gather(*tarefas_rreo)
         resultados_rgf = await asyncio.gather(*tarefas_rgf)
 
-    # Nivelando (flattening) as listas de listas que o gather retorna
-    registros_rreo = [item for sublist in resultados_rreo for item in sublist if sublist]
-    registros_rgf = [item for sublist in resultados_rgf for item in sublist if sublist]
+    # Flatten: asyncio.gather retorna lista de listas
+    registros_rreo = [
+        item for sublist in resultados_rreo
+        if sublist for item in sublist
+    ]
+    registros_rgf = [
+        item for sublist in resultados_rgf
+        if sublist for item in sublist
+    ]
 
+    # Salva RREO
     if registros_rreo:
         df_rreo = pd.DataFrame(registros_rreo)
-        df_rreo.to_csv(PROCESSED_DIR / "siconfi_rreo_pb_rap.csv", index=False)
-        print(f"\nRREO: {len(df_rreo)} linhas estruturadas com sucesso.")
+        caminho_rreo = PROCESSED_DIR / "siconfi_rreo_pb.csv"
+        df_rreo.to_csv(caminho_rreo, index=False, encoding="utf-8")
+        print(f"\n✅ RREO salvo: {len(df_rreo):,} linhas → {caminho_rreo.name}")
+        print(f"   Colunas: {list(df_rreo.columns)}")
+        print(f"   Anos com dados: {sorted(df_rreo['exercicio'].unique())}")
+        print(f"   Anexos coletados: {sorted(df_rreo['anexo'].unique())}")
+    else:
+        print("\n⚠️  RREO: nenhum dado retornado.")
 
+    # Salva RGF
     if registros_rgf:
         df_rgf = pd.DataFrame(registros_rgf)
-        df_rgf.to_csv(PROCESSED_DIR / "siconfi_rgf_pb_rap.csv", index=False)
-        print(f"RGF: {len(df_rgf)} linhas estruturadas com sucesso.")
+        caminho_rgf = PROCESSED_DIR / "siconfi_rgf_pb.csv"
+        df_rgf.to_csv(caminho_rgf, index=False, encoding="utf-8")
+        print(f"\n✅ RGF salvo: {len(df_rgf):,} linhas → {caminho_rgf.name}")
+        print(f"   Anos com dados: {sorted(df_rgf['exercicio'].unique())}")
+    else:
+        print("\n⚠️  RGF: nenhum dado retornado.")
 
     fim = time.time()
-    minutos = (fim - inicio) / 60
-    print(f"\n=== Coleta concluída em {minutos:.2f} minutos! ===")
+    print(f"\n⏱  Concluído em {(fim - inicio) / 60:.1f} minutos.")
+    print("=" * 55)
+
 
 if __name__ == "__main__":
-    # Roda o event loop assíncrono
-    asyncio.run(orquestrar_coleta_assincrona())
+    asyncio.run(orquestrar_coleta())

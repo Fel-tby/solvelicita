@@ -205,3 +205,17 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Dados gerados localmente — arquivos grandes, não vão pro GitHub
+data/processed/*.csv
+data/processed/*.parquet
+data/raw/**/*.json
+data/raw/**/*.zip
+data/raw/**/*.csv
+data/outputs/*.csv
+
+# Arquivos de diagnóstico temporários
+diagnostico*.py
+baixar_finbra.py
+achar_urls_finbra*.py
+teste_siconfi.py
