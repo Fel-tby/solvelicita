@@ -1,18 +1,27 @@
+"""
+Módulo analítico responsável pelo processamento de matrizes financeiras do SICONFI.
+Utiliza DuckDB para executar operações de malha (cross join) e agregação SQL, 
+seguido por Pandas para cálculo vetorizado de indicadores de saúde fiscal.
+"""
+
 import duckdb
 import pandas as pd
 from pathlib import Path
 
+# ── Configurações de Diretórios ───────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-CSV_SICONFI   = BASE_DIR / "data" / "processed" / "siconfi_rreo_pb.csv"
+CSV_SICONFI    = BASE_DIR / "data" / "processed" / "siconfi_rreo_pb.csv"
 CSV_MUNICIPIOS = BASE_DIR / "data" / "processed" / "municipios_pb_tabela.csv"
-OUT = BASE_DIR / "data" / "processed" / "siconfi_indicadores_pb.csv"
+OUT            = BASE_DIR / "data" / "processed" / "siconfi_indicadores_pb.csv"
 
+# Inicialização da instância in-memory do DuckDB
 con = duckdb.connect()
 
 print("Executando motor analítico DuckDB...")
 
+# ── Processamento SQL (ETL) ───────────────────────────────────────────────────
 query = """
-    -- 1. Backbone: malha completa de todos os municípios x todos os anos
+    -- 1. Definição da malha cartesiana (Backbone): Todos os Municípios x Todos os Anos
     WITH anos AS (
         SELECT DISTINCT exercicio AS ano
         FROM read_csv_auto($csv_siconfi)
@@ -27,14 +36,14 @@ query = """
         CROSS JOIN anos a
     ),
 
-    -- 2. Último período entregue por município/ano (resolve o problema do ano corrente)
+    -- 2. Identificação do último período fiscal declarado por ente/ano
     ultimo_periodo AS (
         SELECT cod_ibge, exercicio AS ano, MAX(periodo) AS max_periodo
         FROM read_csv_auto($csv_siconfi)
         GROUP BY cod_ibge, exercicio
     ),
 
-    -- 3. Dados financeiros extraídos apenas do último período disponível
+    -- 3. Pivotamento de métricas financeiras baseado no último período entregue
     dados_financeiros AS (
         SELECT
             s.cod_ibge,
@@ -66,7 +75,7 @@ query = """
                 AND s.coluna = 'DOTAÇÃO ATUALIZADA (d)'
                 THEN s.valor END) AS despesa_dotacao,
 
-            -- Restos Processados: entregue, fiscalizado, não pago (calote real)
+            -- Restos a Pagar Processados (Anexo 07)
             MAX(CASE
                 WHEN s.anexo = 'RREO-Anexo 07'
                 AND s.cod_conta = 'RestosAPagarProcessadosENaoProcessadosLiquidadosAPagar'
@@ -74,7 +83,7 @@ query = """
                 AND s.conta = 'TOTAL (III) = (I + II)'
                 THEN s.valor END) AS restos_processados,
 
-            -- Restos Não Processados: empenhou, não entregou (compromisso futuro)
+            -- Restos a Pagar Não Processados (Anexo 07)
             MAX(CASE
                 WHEN s.anexo = 'RREO-Anexo 07'
                 AND s.cod_conta = 'RestosAPagarNaoProcessadosAPagar'
@@ -82,7 +91,7 @@ query = """
                 AND s.conta = 'TOTAL (III) = (I + II)'
                 THEN s.valor END) AS restos_nao_processados,
 
-            -- Total para conferência (deve ser = processados + não processados)
+            -- Validador de Saldo Total (Anexo 07)
             MAX(CASE
                 WHEN s.anexo = 'RREO-Anexo 07'
                 AND s.cod_conta = 'SaldoTotal'
@@ -98,7 +107,7 @@ query = """
         GROUP BY s.cod_ibge, s.exercicio
     )
 
-    -- 4. Left join do backbone com os dados (municípios omissos ficam com NULL)
+    -- 4. Fusão final assegurando a inclusão de entes omissos (NULL entries)
     SELECT
         mb.cod_ibge,
         mb.instituicao,
@@ -125,37 +134,40 @@ df = con.execute(query, {
 
 print("Calculando indicadores...")
 
-# Transparência: False significa penalização automática no score
+# ── Engenharia de Features (KPIs Fiscais) ─────────────────────────────────────
+
+# Flag de conformidade de entrega do RREO
 df["entregou_rreo"] = df["receita_prevista"].notna()
 
-# Eorcam: % de execução da receita prevista
+# Eficiência de Arrecadação (% de execução da receita prevista)
 df["eorcam"] = df.apply(
     lambda r: round(r["receita_realizada"] / r["receita_prevista"] * 100, 2)
     if pd.notnull(r["receita_prevista"]) and r["receita_prevista"] > 0 else None,
     axis=1
 )
 
-# Calote real: restos processados como % da receita (dívida confirmada)
+# Pressão de Dívida de Curto Prazo (Restos Processados / Receita Realizada)
 df["rrestos_proc_pct"] = df.apply(
     lambda r: round(r["restos_processados"] / r["receita_realizada"] * 100, 2)
     if pd.notnull(r["receita_realizada"]) and r["receita_realizada"] > 0 else None,
     axis=1
 )
 
-# Comprometimento futuro: restos não processados como % da receita
+# Pressão de Compromissos Futuros (Restos Não Processados / Receita Realizada)
 df["rrestos_nproc_pct"] = df.apply(
     lambda r: round(r["restos_nao_processados"] / r["receita_realizada"] * 100, 2)
     if pd.notnull(r["receita_realizada"]) and r["receita_realizada"] > 0 else None,
     axis=1
 )
 
-# Déficit corrente: despesa liquidada > receita = buraco sendo cavado agora
+# Déficit de Execução (Despesa Liquidada vs Receita Realizada)
 df["deficit_pct"] = df.apply(
     lambda r: round((r["despesa_liquidada"] - r["receita_realizada"]) / r["receita_realizada"] * 100, 2)
     if pd.notnull(r["receita_realizada"]) and r["receita_realizada"] > 0 else None,
     axis=1
 )
 
+# ── Exportação Final ──────────────────────────────────────────────────────────
 df.to_csv(OUT, index=False, encoding="utf-8")
 
 print(f"\n✅ Salvo: {OUT.name}")
