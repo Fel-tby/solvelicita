@@ -1,6 +1,7 @@
 altair==6.0.0
 anyio==4.12.1
 attrs==25.4.0
+beautifulsoup4==4.14.3
 blinker==1.9.0
 branca==0.8.2
 cachetools==6.2.6
@@ -40,7 +41,9 @@ rpds-py==0.30.0
 shapely==2.1.2
 six==1.17.0
 smmap==5.0.2
+soupsieve==2.8.3
 streamlit==1.54.0
+streamlit-folium==0.26.2
 tenacity==9.1.4
 toml==0.10.2
 tornado==6.5.4
