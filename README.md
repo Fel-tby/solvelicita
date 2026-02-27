@@ -12,25 +12,24 @@ SolveLicita calcula um **Score de Solvência (0–100)** para municípios brasil
 
 | Fonte | O que mede |
 |-------|------------|
-| SICONFI (Tesouro Nacional) | Execução orçamentária e restos a pagar |
+| SICONFI (Tesouro Nacional) | Execução orçamentária, restos a pagar e saldo de caixa |
 | CAUC/STN | Bloqueios para recebimento de repasses federais |
-| DataJud (CNJ) | Ações judiciais de fornecedores por inadimplência |
+| FINBRA/DCA (STN) | Saldo de caixa líquido e autonomia tributária |
 | PNCP | Histórico de compras públicas |
-| TCU | Achados críticos de auditoria |
 
 ## Status atual
 
-**Fase 0 em desenvolvimento** — Relatório público dos 223 municípios da Paraíba
+**Fase 1 concluída** — Score de solvência calculado para os 223 municípios da Paraíba
 
 - [x] Tabela mestra de municípios PB (223 municípios)
-- [x] Coleta SICONFI (223 municípios PB, 2020–2025)
+- [x] Coleta SICONFI (223 municípios PB, 2020–2024)
 - [x] Coleta CAUC (snapshot 24/02/2026)
 - [x] Coleta PNCP (54.139 licitações, 220 municípios, 2023–2026)
-- [ ] Coleta DataJud (TJPB + TRF5)
-- [ ] Cálculo do score de solvência
-- [ ] Mapa coroplético interativo
+- [x] Coleta FINBRA/DCA (saldo de caixa e autonomia tributária, 2020–2024)
+- [x] Cálculo do score de solvência (6 indicadores, 100 pts)
+- [x] Mapa coroplético interativo (Streamlit + Folium)
 - [ ] Relatório narrativo público
-- [ ] App Streamlit com busca por município
+- [ ] Expansão para demais estados
 
 ## Como rodar localmente
 
@@ -40,3 +39,10 @@ cd solvelicita
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
+
+# Preparar dados geoespaciais (apenas uma vez)
+python app/preparar_dados.py
+
+# Rodar o dashboard
+streamlit run app/main.py
+```
