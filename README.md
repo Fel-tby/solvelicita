@@ -2,6 +2,12 @@
 
 > **"Essa prefeitura vai me pagar?"** — a pergunta que nenhuma plataforma de licitações responde.
 
+## 🌐 App ao vivo
+
+**[https://solvelicita.streamlit.app](https://solvelicita.streamlit.app)**
+
+---
+
 ## O problema
 
 25% das PMEs brasileiras estão inadimplentes. Um dos fatores de risco oculto é fornecer para entes públicos que atrasam ou não pagam — mas não existe hoje uma ferramenta pública que avalie a solvência do comprador público *antes* da empresa investir tempo e recursos em participar da licitação.
@@ -12,14 +18,16 @@ SolveLicita calcula um **Score de Solvência (0–100)** para municípios brasil
 
 | Fonte | O que mede |
 |-------|------------|
-| SICONFI (Tesouro Nacional) | Execução orçamentária, restos a pagar e saldo de caixa |
+| SICONFI (Tesouro Nacional) | Execução orçamentária, restos a pagar e transparência fiscal |
 | CAUC/STN | Bloqueios para recebimento de repasses federais |
 | FINBRA/DCA (STN) | Saldo de caixa líquido e autonomia tributária |
 | PNCP | Histórico de compras públicas |
 
+Metodologia completa em [METODOLOGIA.md](METODOLOGIA.md).
+
 ## Status atual
 
-**Fase 1 concluída** — Score de solvência calculado para os 223 municípios da Paraíba
+**Fase 0 concluída** — Score de solvência calculado para os 223 municípios da Paraíba
 
 - [x] Tabela mestra de municípios PB (223 municípios)
 - [x] Coleta SICONFI (223 municípios PB, 2020–2024)
@@ -41,7 +49,7 @@ venv\Scripts\activate
 pip install -r requirements.txt
 
 # Preparar dados geoespaciais (apenas uma vez)
-python app/preparar_dados.py
+python app/prep_data.py
 
 # Rodar o dashboard
 streamlit run app/main.py

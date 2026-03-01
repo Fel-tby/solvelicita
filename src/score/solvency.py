@@ -1,6 +1,6 @@
 """
 Motor de cálculo do Score de Solvência (0–100) para municípios da Paraíba.
-Fase 1 — score completo com DCA integrado (Balanço Patrimonial).
+Fase 0 — score completo com DCA integrado (Balanço Patrimonial).
 Metodologia completa em METODOLOGIA.md.
 
 v4 — integra Scaixa e Autonomia Tributária via dca_scorer.py.
@@ -18,8 +18,8 @@ PROCESSED = BASE_DIR / "data" / "processed"
 OUTPUTS   = BASE_DIR / "data" / "outputs"
 OUTPUTS.mkdir(parents=True, exist_ok=True)
 
-# ── Pesos da fórmula (METODOLOGIA.md v3.0) ───────────────────────────────────
-# Fase 1: DCA entra com 30 pts — pesos originais reduzidos proporcionalmente.
+# ── Pesos da fórmula (METODOLOGIA.md v5.0) ───────────────────────────────────
+# Fase 0: DCA entra com 30 pts — pesos originais reduzidos proporcionalmente.
 # Critérios pendentes (DataJud, TCU, CEIS) permanecem reservados como risco zero.
 PESOS = {
     "eorcam":    22,   # fluxo de caixa real             (era 31)
@@ -60,7 +60,7 @@ PENDENCIAS_MODERADAS = {
 
 print("=" * 65)
 print(" Score de Solvência — SolveLicita")
-print(f" Fase 1 — score completo ({PESO_DISPONIVEL} pts) com DCA integrado")
+print(f" Fase 0 — score completo ({PESO_DISPONIVEL} pts) com DCA integrado")
 print(" Modo: limiares conservadores (credit rating)")
 print("=" * 65)
 

@@ -1,6 +1,6 @@
 """
 dca_scorer.py — Pontuação DCA para uso pelo solvency.py
-SolveLicita | Fase 1
+SolveLicita | Fase 0
 
 Responsabilidades:
   1. Carregar dca_indicadores_pb.csv
