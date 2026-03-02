@@ -13,6 +13,7 @@ from folium.features import GeoJsonTooltip, GeoJsonPopup
 from streamlit_folium import st_folium
 from pathlib import Path
 
+
 st.set_page_config(
     page_title="SolveLicita — Análise de Solvência Municipal · PB",
     page_icon="📋",
@@ -20,13 +21,12 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+
 # ── CSS institucional ─────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    /* Fundo geral */
     .stApp { background-color: #0f1117; }
 
-    /* Cabeçalho institucional */
     .inst-header {
         border-left: 4px solid #475569;
         padding: 6px 0 6px 14px;
@@ -47,7 +47,6 @@ st.markdown("""
         font-family: monospace;
     }
 
-    /* Bloco de métrica customizado */
     .kpi-block {
         background: #1e2433;
         border: 1px solid #2d3748;
@@ -70,7 +69,6 @@ st.markdown("""
         line-height: 1.2;
     }
 
-    /* Tabela de distribuição */
     .dist-row {
         display: flex;
         align-items: center;
@@ -86,17 +84,9 @@ st.markdown("""
         height: 6px;
         margin: 0 10px;
     }
-    .dist-bar-fill {
-        height: 6px;
-        border-radius: 2px;
-    }
-    .dist-count {
-        color: #94a3b8;
-        min-width: 28px;
-        text-align: right;
-    }
+    .dist-bar-fill { height: 6px; border-radius: 2px; }
+    .dist-count { color: #94a3b8; min-width: 28px; text-align: right; }
 
-    /* Seção de painel */
     .panel-section {
         background: #131720;
         border: 1px solid #1e2433;
@@ -115,7 +105,6 @@ st.markdown("""
         border-bottom: 1px solid #1e2433;
     }
 
-    /* Badges de risco */
     .badge {
         display: inline-block;
         padding: 1px 7px;
@@ -125,25 +114,20 @@ st.markdown("""
         font-weight: 600;
         letter-spacing: 0.05em;
     }
-    .badge-verde  { background:#14532d; color:#4ade80; border:1px solid #166534; }
-    .badge-amarelo{ background:#422006; color:#fbbf24; border:1px solid #713f12; }
-    .badge-vermelho{background:#450a0a; color:#f87171; border:1px solid #7f1d1d; }
-    .badge-critico{ background:#1c0505; color:#ef4444; border:1px solid #450a0a; }
-    .badge-nd     { background:#1e2433; color:#64748b; border:1px solid #2d3748; }
+    .badge-verde   { background:#14532d; color:#4ade80; border:1px solid #166534; }
+    .badge-amarelo { background:#422006; color:#fbbf24; border:1px solid #713f12; }
+    .badge-vermelho{ background:#450a0a; color:#f87171; border:1px solid #7f1d1d; }
+    .badge-critico { background:#1c0505; color:#ef4444; border:1px solid #450a0a; }
+    .badge-nd      { background:#1e2433; color:#64748b; border:1px solid #2d3748; }
 
-    /* Sidebar */
     section[data-testid="stSidebar"] {
         background-color: #0c0f16;
         border-right: 1px solid #1e2433;
     }
-    section[data-testid="stSidebar"] .stMarkdown p {
-        font-size: 0.78rem;
-    }
+    section[data-testid="stSidebar"] .stMarkdown p { font-size: 0.78rem; }
 
-    /* Esconde toolbar do dataframe */
     [data-testid="stElementToolbar"] { display: none; }
 
-    /* Rodapé */
     .footer-line {
         font-size: 0.68rem;
         color: #334155;
@@ -155,7 +139,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
 BASE = Path(__file__).resolve().parent
+
 
 # ── Paleta ────────────────────────────────────────────────────────────────────
 CORES = {
@@ -199,14 +185,26 @@ def carregar_dados():
         st.error("❌ pb_score.geojson não encontrado. Execute: python app/prep_data.py")
         st.stop()
     gdf = gpd.read_file(geo_path)
+
+    # Colunas fiscais originais
     for col in ["score", "eorcam_raw", "rrestos_raw", "qsiconfi",
                 "ccauc", "scaixa_medio", "autonomia_media", "populacao"]:
         gdf[col] = pd.to_numeric(gdf.get(col), errors="coerce")
+
+    # ── NOVO: colunas PNCP ────────────────────────────────────────────────────
+    for col in ["n_licitacoes", "valor_homologado_total",
+                "pct_dispensa", "ano_ultima_licitacao"]:
+        gdf[col] = pd.to_numeric(gdf.get(col), errors="coerce")
+    for col in ["dado_suspeito", "alerta_composto"]:
+        if col in gdf.columns:
+            gdf[col] = gdf[col].fillna(False).infer_objects(copy=False)
+
     gdf["cor"] = gdf["score"].apply(cor_por_score)
     return gdf
 
 
 gdf = carregar_dados()
+
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -233,27 +231,18 @@ with st.sidebar:
     )
     busca = st.text_input("Buscar município", placeholder="Ex: Campina Grande")
 
-    st.divider()
-    st.markdown('<p style="font-size:0.68rem;color:#64748b;font-family:monospace;'
-                'text-transform:uppercase;letter-spacing:0.08em">Legenda de Risco</p>',
-                unsafe_allow_html=True)
-    for classe in ORDEM:
-        cor = CORES[classe]
-        st.markdown(
-            f'<div style="display:flex;align-items:center;gap:8px;'
-            f'padding:3px 0;font-family:monospace;font-size:0.78rem;color:#94a3b8">'
-            f'<div style="width:10px;height:10px;border-radius:2px;'
-            f'background:{cor};flex-shrink:0"></div>{classe}</div>',
-            unsafe_allow_html=True,
-        )
+    # ── REMOVIDO: bloco Legenda de Risco ──────────────────────────────────────
+
     st.divider()
     st.markdown(
         '<p style="font-size:0.65rem;color:#334155;font-family:monospace">'
-        'Fontes: SICONFI · CAUC/STN · FINBRA/DCA<br>'
-        'Período de referência: 2020–2024<br>'
+        'Fontes: SICONFI · CAUC/STN · FINBRA/DCA · PNCP<br>'
+        'Período fiscal: 2020–2024<br>'
+        'Licitações PNCP: 2023–fev/2026<br>'
         'Snapshot CAUC: 24/02/2026</p>',
         unsafe_allow_html=True,
     )
+
 
 # ── Filtros ───────────────────────────────────────────────────────────────────
 gdf_f = gdf[gdf["classificacao"].isin(classes_selecionadas)].copy()
@@ -265,6 +254,7 @@ gdf_f = gdf_f[mask]
 if busca.strip():
     gdf_f = gdf_f[gdf_f["ente"].str.contains(busca.strip(), case=False, na=False)]
 
+
 # ── Cabeçalho ─────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="inst-header">
@@ -272,6 +262,7 @@ st.markdown("""
     <p>SCORE DE SOLVÊNCIA · 223 MUNICÍPIOS · REFERÊNCIA 2020–2024 · FASE 0</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 # ── KPIs ──────────────────────────────────────────────────────────────────────
 com_score = gdf["score"].dropna()
@@ -282,11 +273,11 @@ n_nd      = (gdf["classificacao"] == "⚫ Sem Dados").sum()
 
 k1, k2, k3, k4, k5 = st.columns(5)
 for col, label, val in [
-    (k1, "Score Médio PB",       f"{com_score.mean():.1f}"),
-    (k2, "Score Mediano",         f"{com_score.median():.1f}"),
-    (k3, "Risco Baixo",          str(n_baixo)),
-    (k4, "Alto + Crítico",       str(n_alto)),
-    (k5, "Sem Dados SICONFI",    str(n_nd)),
+    (k1, "Score Médio PB",    f"{com_score.mean():.1f}"),
+    (k2, "Score Mediano",     f"{com_score.median():.1f}"),
+    (k3, "Risco Baixo",       str(n_baixo)),
+    (k4, "Alto + Crítico",    str(n_alto)),
+    (k5, "Sem Dados SICONFI", str(n_nd)),
 ]:
     col.markdown(
         f'<div class="kpi-block">'
@@ -297,6 +288,7 @@ for col, label, val in [
     )
 
 st.markdown("<div style='margin-top:18px'></div>", unsafe_allow_html=True)
+
 
 # ── Mapa + Painel ─────────────────────────────────────────────────────────────
 col_mapa, col_painel = st.columns([3, 2])
@@ -338,12 +330,18 @@ with col_mapa:
             "ente", "score_display", "classificacao", "populacao",
             "eorcam_raw", "rrestos_raw", "qsiconfi", "ccauc",
             "scaixa_medio", "autonomia_media",
+            # ── NOVO: dados PNCP ──────────────────────────────────────────────
+            "valor_homologado_display", "n_licitacoes_display",
+            "pct_dispensa_display", "ano_ultima_licitacao_display",
         ],
         aliases=[
             "Município", "Score", "Risco", "População",
             "Exec. Orçam. (%)", "Restos a Pagar (%)",
             "SICONFI (conformidade)", "CAUC (risco 0→1)",
             "Scaixa — DCA/FINBRA", "Autonomia — DCA/FINBRA",
+            # ── NOVO ──────────────────────────────────────────────────────────
+            "Val. Homologado (PNCP)", "Licitações (PNCP)",
+            "Via Dispensa/Inexig.", "Última Licitação",
         ],
         style=(
             "background-color:#1e2433;color:#e2e8f0;"
@@ -364,8 +362,8 @@ with col_mapa:
 
     st_folium(m, width="100%", height=560, returned_objects=[])
 
+
 with col_painel:
-    # Distribuição
     st.markdown('<div class="panel-section">'
                 '<div class="panel-title">Distribuição por Faixa de Risco</div>',
                 unsafe_allow_html=True)
@@ -388,16 +386,15 @@ with col_painel:
         )
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Estatísticas das variáveis
     st.markdown('<div class="panel-section">'
                 '<div class="panel-title">Indicadores — Mediana Estadual</div>',
                 unsafe_allow_html=True)
     stats = {
-        "Exec. Orçamentária (%)":  ("eorcam_raw",      "{:.1f}%"),
-        "Restos a Pagar (%)":      ("rrestos_raw",     "{:.1f}%"),
-        "Conformidade SICONFI":    ("qsiconfi",        "{:.0%}"),
-        "Scaixa / Rec. Corrente":  ("scaixa_medio",    "{:.3f}"),
-        "Autonomia Tributária":    ("autonomia_media", "{:.3f}"),
+        "Exec. Orçamentária (%)": ("eorcam_raw",      "{:.1f}%"),
+        "Restos a Pagar (%)":     ("rrestos_raw",     "{:.1f}%"),
+        "Conformidade SICONFI":   ("qsiconfi",        "{:.0%}"),
+        "Scaixa / Rec. Corrente": ("scaixa_medio",    "{:.3f}"),
+        "Autonomia Tributária":   ("autonomia_media", "{:.3f}"),
     }
     for label, (col, fmt) in stats.items():
         val = gdf[col].median()
@@ -413,6 +410,7 @@ with col_painel:
         )
     st.markdown('</div>', unsafe_allow_html=True)
 
+
 # ── Tabela completa ───────────────────────────────────────────────────────────
 st.markdown("<div style='margin-top:8px'></div>", unsafe_allow_html=True)
 st.markdown('<div class="panel-title" style="margin-bottom:8px">'
@@ -424,6 +422,8 @@ df_tabela = (
         "ente", "score", "classificacao", "populacao",
         "eorcam_raw", "rrestos_raw", "qsiconfi", "ccauc",
         "scaixa_medio", "autonomia_media", "dado_suspeito",
+        # ── NOVO: dados PNCP ──────────────────────────────────────────────────
+        "n_licitacoes", "valor_homologado_total", "pct_dispensa",
     ]]
     .dropna(subset=["score"])
     .sort_values("score", ascending=False)
@@ -432,20 +432,24 @@ df_tabela = (
 df_tabela.index += 1
 
 df_tabela = df_tabela.rename(columns={
-    "ente":            "Município",
-    "score":           "Score",
-    "classificacao":   "Risco",
-    "populacao":       "Pop.",
-    "eorcam_raw":      "Exec.Orç.%",
-    "rrestos_raw":     "Restos.%",
-    "qsiconfi":        "SICONFI",
-    "ccauc":           "CAUC",
-    "scaixa_medio":    "Scaixa",
-    "autonomia_media": "Autonomia",
-    "dado_suspeito":   "⚑ Suspeito",
+    "ente":                  "Município",
+    "score":                 "Score",
+    "classificacao":         "Risco",
+    "populacao":             "Pop.",
+    "eorcam_raw":            "Exec.Orç.%",
+    "rrestos_raw":           "Restos.%",
+    "qsiconfi":              "SICONFI",
+    "ccauc":                 "CAUC",
+    "scaixa_medio":          "Scaixa",
+    "autonomia_media":       "Autonomia",
+    "dado_suspeito":         "⚑ Suspeito",
+    # ── NOVO ──────────────────────────────────────────────────────────────────
+    "n_licitacoes":          "Licitações",
+    "valor_homologado_total": "Val.Homolog.",
+    "pct_dispensa":          "% Dispensa",
 })
 
-# Formatar colunas numéricas
+# Formatar colunas numéricas (exceto Pop., Licitações e Val.Homolog. — via column_config)
 for col, fmt in [
     ("Exec.Orç.%", "{:.1f}"),
     ("Restos.%",   "{:.1f}"),
@@ -460,15 +464,28 @@ for col, fmt in [
             lambda x: fmt.format(x) if pd.notna(x) else "—"
         )
 
-df_tabela["Pop."] = df_tabela["Pop."].apply(
-    lambda x: f"{int(x):,}".replace(",", ".") if pd.notna(x) else "—"
-)
-
 st.dataframe(
     df_tabela,
     use_container_width=True,
     height=420,
+    column_config={
+        # ── Fix sort populacional: mantém numérico, formata na exibição ───────
+        "Pop.": st.column_config.NumberColumn(
+            "Pop.", format="%d",
+        ),
+        # ── NOVO: colunas PNCP com formatação nativa ──────────────────────────
+        "Licitações": st.column_config.NumberColumn(
+            "Licitações", format="%d",
+        ),
+        "Val.Homolog.": st.column_config.NumberColumn(
+            "Val.Homolog.", format="R$ %d",
+        ),
+        "% Dispensa": st.column_config.NumberColumn(
+            "% Dispensa", format="%.1f%%",
+        ),
+    },
 )
+
 
 # ── Rodapé ────────────────────────────────────────────────────────────────────
 st.markdown(
