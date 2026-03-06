@@ -5,13 +5,16 @@ Mapa coroplético interativo dos municípios da Paraíba.
 Uso: streamlit run app/main.py
 """
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+
 import streamlit as st
 import pandas as pd
 import geopandas as gpd
 import folium
 from folium.features import GeoJsonTooltip, GeoJsonPopup
 from streamlit_folium import st_folium
-from pathlib import Path
 
 
 st.set_page_config(
@@ -186,16 +189,21 @@ def carregar_dados():
         st.stop()
     gdf = gpd.read_file(geo_path)
 
-    # Colunas fiscais originais
-    for col in ["score", "eorcam_raw", "rrestos_raw", "qsiconfi",
-                "ccauc", "scaixa_medio", "autonomia_media", "populacao"]:
+    # Colunas fiscais — nomes alinhados ao solvency v6.4.0
+    for col in [
+        "score", "eorcam_raw", "lliq_raw", "rrestos_nproc_pct",
+        "qsiconfi", "ccauc", "autonomia_media", "populacao",
+        "n_anos_cronicos", "dias_atraso", "decay_fator",
+    ]:
         gdf[col] = pd.to_numeric(gdf.get(col), errors="coerce")
 
-    # ── NOVO: colunas PNCP ────────────────────────────────────────────────────
+    # Colunas PNCP
     for col in ["n_licitacoes", "valor_homologado_total",
                 "pct_dispensa", "ano_ultima_licitacao"]:
         gdf[col] = pd.to_numeric(gdf.get(col), errors="coerce")
-    for col in ["dado_suspeito", "alerta_composto"]:
+
+    for col in ["dado_suspeito", "alerta_composto",
+                "dado_defasado", "autonomia_critica", "lliq_parcial"]:
         if col in gdf.columns:
             gdf[col] = gdf[col].fillna(False).infer_objects(copy=False)
 
@@ -237,7 +245,7 @@ with st.sidebar:
     st.markdown(
         '<p style="font-size:0.65rem;color:#334155;font-family:monospace">'
         'Fontes: SICONFI · CAUC/STN · FINBRA/DCA · PNCP<br>'
-        'Período fiscal: 2020–2024<br>'
+        'Período fiscal: 2020–2025<br>'
         'Licitações PNCP: 2023–fev/2026<br>'
         'Snapshot CAUC: 24/02/2026</p>',
         unsafe_allow_html=True,
@@ -259,7 +267,7 @@ if busca.strip():
 st.markdown("""
 <div class="inst-header">
     <h1>Capacidade de Pagamento dos Municípios — Paraíba</h1>
-    <p>SCORE DE SOLVÊNCIA · 223 MUNICÍPIOS · REFERÊNCIA 2020–2024 · FASE 0</p>
+    <p>SCORE DE SOLVÊNCIA · 223 MUNICÍPIOS · REFERÊNCIA 2020–2025 · FASE 0</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -328,18 +336,18 @@ with col_mapa:
     popup = GeoJsonPopup(
         fields=[
             "ente", "score_display", "classificacao", "populacao",
-            "eorcam_raw", "rrestos_raw", "qsiconfi", "ccauc",
-            "scaixa_medio", "autonomia_media",
-            # ── NOVO: dados PNCP ──────────────────────────────────────────────
+            "eorcam_raw", "rrestos_nproc_pct", "qsiconfi", "ccauc",
+            "lliq_raw", "autonomia_media",
+            # ── dados PNCP ────────────────────────────────────────────────────
             "valor_homologado_display", "n_licitacoes_display",
             "pct_dispensa_display", "ano_ultima_licitacao_display",
         ],
         aliases=[
             "Município", "Score", "Risco", "População",
-            "Exec. Orçam. (%)", "Restos a Pagar (%)",
+            "Exec. Orçam. (%)", "RP Não Proc. (%)",
             "SICONFI (conformidade)", "CAUC (risco 0→1)",
-            "Scaixa — DCA/FINBRA", "Autonomia — DCA/FINBRA",
-            # ── NOVO ──────────────────────────────────────────────────────────
+            "Lliq — RGF A05", "Autonomia — DCA/FINBRA",
+            # ── PNCP ──────────────────────────────────────────────────────────
             "Val. Homologado (PNCP)", "Licitações (PNCP)",
             "Via Dispensa/Inexig.", "Última Licitação",
         ],
@@ -390,11 +398,11 @@ with col_painel:
                 '<div class="panel-title">Indicadores — Mediana Estadual</div>',
                 unsafe_allow_html=True)
     stats = {
-        "Exec. Orçamentária (%)": ("eorcam_raw",      "{:.1f}%"),
-        "Restos a Pagar (%)":     ("rrestos_raw",     "{:.1f}%"),
-        "Conformidade SICONFI":   ("qsiconfi",        "{:.0%}"),
-        "Scaixa / Rec. Corrente": ("scaixa_medio",    "{:.3f}"),
-        "Autonomia Tributária":   ("autonomia_media", "{:.3f}"),
+        "Exec. Orçamentária (%)": ("eorcam_raw",        "{:.1f}%"),
+        "RP Não Proc. (%)":       ("rrestos_nproc_pct", "{:.1f}%"),
+        "Conformidade SICONFI":   ("qsiconfi",           "{:.0%}"),
+        "Lliq / Rec. (RGF A05)":  ("lliq_raw",          "{:.3f}"),
+        "Autonomia Tributária":   ("autonomia_media",    "{:.3f}"),
     }
     for label, (col, fmt) in stats.items():
         val = gdf[col].median()
@@ -420,9 +428,9 @@ st.markdown('<div class="panel-title" style="margin-bottom:8px">'
 df_tabela = (
     gdf_f[[
         "ente", "score", "classificacao", "populacao",
-        "eorcam_raw", "rrestos_raw", "qsiconfi", "ccauc",
-        "scaixa_medio", "autonomia_media", "dado_suspeito",
-        # ── NOVO: dados PNCP ──────────────────────────────────────────────────
+        "eorcam_raw", "rrestos_nproc_pct", "qsiconfi", "ccauc",
+        "lliq_raw", "autonomia_media", "dado_suspeito",
+        # ── dados PNCP ────────────────────────────────────────────────────────
         "n_licitacoes", "valor_homologado_total", "pct_dispensa",
     ]]
     .dropna(subset=["score"])
@@ -432,36 +440,35 @@ df_tabela = (
 df_tabela.index += 1
 
 df_tabela = df_tabela.rename(columns={
-    "ente":                  "Município",
-    "score":                 "Score",
-    "classificacao":         "Risco",
-    "populacao":             "Pop.",
-    "eorcam_raw":            "Exec.Orç.%",
-    "rrestos_raw":           "Restos.%",
-    "qsiconfi":              "SICONFI",
-    "ccauc":                 "CAUC",
-    "scaixa_medio":          "Scaixa",
-    "autonomia_media":       "Autonomia",
-    "dado_suspeito":         "⚑ Suspeito",
-    # ── NOVO ──────────────────────────────────────────────────────────────────
-    "n_licitacoes":          "Licitações",
+    "ente":                   "Município",
+    "score":                  "Score",
+    "classificacao":          "Risco",
+    "populacao":              "Pop.",
+    "eorcam_raw":             "Exec.Orç.%",
+    "rrestos_nproc_pct":      "RP NPrc.%",
+    "qsiconfi":               "SICONFI",
+    "ccauc":                  "CAUC",
+    "lliq_raw":               "Lliq",
+    "autonomia_media":        "Autonomia",
+    "dado_suspeito":          "⚑ Suspeito",
+    # ── PNCP ──────────────────────────────────────────────────────────────────
+    "n_licitacoes":           "Licitações",
     "valor_homologado_total": "Val.Homolog.",
-    "pct_dispensa":          "% Dispensa",
+    "pct_dispensa":           "% Dispensa",
 })
 
-# Formatar colunas numéricas (exceto Pop., Licitações e Val.Homolog. — via column_config)
 for col, fmt in [
     ("Exec.Orç.%", "{:.1f}"),
-    ("Restos.%",   "{:.1f}"),
+    ("RP NPrc.%",  "{:.1f}"),
     ("SICONFI",    "{:.0%}"),
     ("CAUC",       "{:.2f}"),
-    ("Scaixa",     "{:.3f}"),
+    ("Lliq",       "{:.3f}"),
     ("Autonomia",  "{:.3f}"),
     ("Score",      "{:.1f}"),
 ]:
     if col in df_tabela.columns:
         df_tabela[col] = df_tabela[col].apply(
-            lambda x: fmt.format(x) if pd.notna(x) else "—"
+            lambda x, f=fmt: f.format(x) if pd.notna(x) else "—"
         )
 
 st.dataframe(
@@ -469,20 +476,10 @@ st.dataframe(
     use_container_width=True,
     height=420,
     column_config={
-        # ── Fix sort populacional: mantém numérico, formata na exibição ───────
-        "Pop.": st.column_config.NumberColumn(
-            "Pop.", format="%d",
-        ),
-        # ── NOVO: colunas PNCP com formatação nativa ──────────────────────────
-        "Licitações": st.column_config.NumberColumn(
-            "Licitações", format="%d",
-        ),
-        "Val.Homolog.": st.column_config.NumberColumn(
-            "Val.Homolog.", format="R$ %d",
-        ),
-        "% Dispensa": st.column_config.NumberColumn(
-            "% Dispensa", format="%.1f%%",
-        ),
+        "Pop.": st.column_config.NumberColumn("Pop.", format="%d"),
+        "Licitações": st.column_config.NumberColumn("Licitações", format="%d"),
+        "Val.Homolog.": st.column_config.NumberColumn("Val.Homolog.", format="R$ %d"),
+        "% Dispensa": st.column_config.NumberColumn("% Dispensa", format="%.1f%%"),
     },
 )
 

@@ -2,7 +2,7 @@
 
 > **"Essa prefeitura vai me pagar?"** — a pergunta que nenhuma plataforma de licitações responde.
 
-## 🌐 App ao vivo
+## App ao vivo
 
 **[https://solvelicita.streamlit.app](https://solvelicita.streamlit.app)**
 
@@ -10,47 +10,82 @@
 
 ## O problema
 
-25% das PMEs brasileiras estão inadimplentes. Um dos fatores de risco oculto é fornecer para entes públicos que atrasam ou não pagam — mas não existe hoje uma ferramenta pública que avalie a solvência do comprador público *antes* da empresa investir tempo e recursos em participar da licitação.
+Fornecer para o poder público sem avaliar quem está do outro lado do contrato é um risco real e invisível. Não existe hoje uma ferramenta pública que avalie a solvência do comprador municipal *antes* da empresa assinar o contrato.
 
 ## A solução
 
-SolveLicita calcula um **Score de Solvência (0–100)** para municípios brasileiros, cruzando fontes de dados públicos oficiais:
+SolveLicita calcula um **Score de Solvência (0–100)** para cada município brasileiro, cruzando fontes de dados públicos oficiais:
 
-| Fonte | O que mede |
-|-------|------------|
-| SICONFI (Tesouro Nacional) | Execução orçamentária, restos a pagar e transparência fiscal |
-| CAUC/STN | Bloqueios para recebimento de repasses federais |
-| FINBRA/DCA (STN) | Saldo de caixa líquido e autonomia tributária |
-| PNCP | Histórico de compras públicas |
+| Fonte | O que captura |
+|---|---|
+| SICONFI / RGF (Tesouro Nacional) | Liquidez, execução orçamentária, RP crônicos, transparência |
+| CAUC / STN | Bloqueios para recebimento de repasses federais |
+| FINBRA / DCA (STN) | Autonomia tributária |
+| PNCP | Volume e padrão de compras públicas |
 
-Metodologia completa em [METODOLOGIA.md](METODOLOGIA.md).
+Metodologia completa em [`docs/METODOLOGIA.md`](docs/METODOLOGIA.md).
 
-## Status atual
+## Estrutura
 
-**Fase 0 concluída** — Score de solvência calculado para os 223 municípios da Paraíba
+    src/
+    ├── collectors/   # coleta bruta por fonte (SICONFI, CAUC, PNCP, DCA...)
+    ├── processors/   # limpeza e indicadores derivados
+    ├── scorers/      # um scorer por indicador (lliq, eorcam, cauc, qsiconfi...)
+    ├── engine/       # solvency.py — orquestrador e classifier
+    └── utils/        # paths, io
 
-- [x] Tabela mestra de municípios PB (223 municípios)
-- [x] Coleta SICONFI (223 municípios PB, 2020–2024)
-- [x] Coleta CAUC (snapshot 24/02/2026)
-- [x] Coleta PNCP (54.139 licitações, 220 municípios, 2023–2026)
-- [x] Coleta FINBRA/DCA (saldo de caixa e autonomia tributária, 2020–2024)
-- [x] Cálculo do score de solvência (6 indicadores, 100 pts)
-- [x] Mapa coroplético interativo (Streamlit + Folium)
-- [ ] Relatório narrativo público
+    app/              # dashboard Streamlit (main.py + prep_data.py)
+    data/             # raw/, processed/, outputs/
+    docs/             # METODOLOGIA.md
+
+## Status
+
+**Fase 0 — Paraíba concluída**
+
+- [x] Coleta SICONFI — 223 municípios, 2020–2025
+- [x] Coleta CAUC — snapshot 24/02/2026
+- [x] Coleta PNCP — 54.139 licitações, 220 municípios, 2023–2026
+- [x] Coleta FINBRA/DCA — autonomia tributária, 2020–2025
+- [x] Score de solvência — 6 indicadores, 100 pts, decay por defasagem
+- [x] Mapa coroplético interativo — Streamlit + Folium
+- [ ] Relatório narrativo público — Paraíba
 - [ ] Expansão para demais estados
 
 ## Como rodar localmente
 
-```bash
-git clone https://github.com/Fel-tby/solvelicita.git
-cd solvelicita
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
+    git clone https://github.com/Fel-tby/solvelicita.git
+    cd solvelicita
+    python -m venv venv
+    venv\Scripts\activate          # Windows
+    # source venv/bin/activate     # Linux/macOS
+    pip install -r requirements.txt
 
-# Preparar dados geoespaciais (apenas uma vez)
-python app/prep_data.py
+    # 1. Processar indicadores SICONFI
+    python src/processors/siconfi_processor.py
 
-# Rodar o dashboard
-streamlit run app/main.py
-```
+    # 2. Calcular score de solvência
+    python src/engine/solvency.py
+
+    # 3. Enriquecer com dados PNCP
+    python src/processors/pncp_agregador.py
+
+    # 4. Preparar GeoJSON do app (apenas uma vez, ou após novo score)
+    python app/prep_data.py
+
+    # 5. Rodar o dashboard
+    streamlit run app/main.py
+
+## Classificação de risco
+
+| Score | Classificação |
+|---|---|
+| ≥ 75 | 🟢 Risco Baixo |
+| 55 – 74 | 🟡 Risco Médio |
+| 35 – 54 | 🔴 Risco Alto |
+| < 35 | ⛔ Crítico |
+
+Scores podem ser rebaixados por caps de transparência (municípios que não entregam RREO) ou cronicidade de dívidas (RP Processados acima de 3% por múltiplos anos).
+
+---
+
+Dados 100% públicos · Código aberto · [Metodologia](docs/METODOLOGIA.md) · [MIT License](LICENSE)

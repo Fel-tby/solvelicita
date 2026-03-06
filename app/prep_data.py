@@ -2,19 +2,23 @@
 """
 prep_data.py
 Baixa o GeoJSON dos municípios da PB e faz merge com score_municipios_pb_pncp.csv.
-Execute UMA vez antes de rodar o app, e sempre que o pncp_aggregator for reprocessado.
+Execute UMA vez antes de rodar o app, e sempre que o pncp_agregador for reprocessado.
 
 Uso:
     python app/prep_data.py
 """
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+
 import pandas as pd
 import geopandas as gpd
 import requests
-from pathlib import Path
+from utils.paths import OUTPUTS
 
 BASE = Path(__file__).resolve().parent
-CSV  = BASE.parent / "data" / "outputs" / "score_municipios_pb_pncp.csv"
+CSV  = OUTPUTS / "score_municipios_pb_pncp.csv"
 OUT  = BASE / "data" / "pb_score.geojson"
 
 GEOJSON_URL = (
@@ -50,12 +54,9 @@ merged["score_display"] = merged["score"].apply(
 )
 
 def fmt_valor(v):
-    if pd.isna(v):
-        return "—"
-    if v >= 1_000_000_000:
-        return f"R$ {v/1_000_000_000:.1f} bi"
-    if v >= 1_000_000:
-        return f"R$ {v/1_000_000:.1f} mi"
+    if pd.isna(v):        return "—"
+    if v >= 1_000_000_000: return f"R$ {v/1_000_000_000:.1f} bi"
+    if v >= 1_000_000:     return f"R$ {v/1_000_000:.1f} mi"
     return f"R$ {v:,.0f}"
 
 merged["valor_homologado_display"] = merged["valor_homologado_total"].apply(fmt_valor)
@@ -72,12 +73,14 @@ merged["ano_ultima_licitacao_display"] = merged["ano_ultima_licitacao"].apply(
     lambda x: str(int(x)) if pd.notna(x) else "—"
 )
 
-# Fix FutureWarning: infer_objects antes do OR booleano
+# ── Alerta composto ───────────────────────────────────────────────────────────
+# scaixa_medio foi removido do pipeline — substituto: lliq_raw < 0
+# (liquidez negativa = ativo financeiro menor que passivo, mesmo conceito)
 alerta_dispensa = merged["alerta_dispensa"].fillna(False).infer_objects(copy=False)
-scaixa_neg      = (merged["scaixa_medio"].fillna(0) < 0)
+lliq_neg        = (merged["lliq_raw"].fillna(0) < 0)
 dado_suspeito   = merged["dado_suspeito"].fillna(False).infer_objects(copy=False)
 
-merged["alerta_composto"] = alerta_dispensa | scaixa_neg | dado_suspeito
+merged["alerta_composto"] = alerta_dispensa | lliq_neg | dado_suspeito
 
 # ── Exportar ──────────────────────────────────────────────────────────────────
 OUT.parent.mkdir(parents=True, exist_ok=True)
