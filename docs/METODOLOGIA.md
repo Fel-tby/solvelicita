@@ -4,17 +4,17 @@
 **Última atualização:** Março/2026
 **Aviso:** Score baseado exclusivamente em dados oficiais declarados pelo próprio município ao Tesouro Nacional (SICONFI/RREO/RGF e FINBRA/DCA) e ao Governo Federal (CAUC/STN). Qualquer questionamento sobre os dados deve ser direcionado às fontes originais.
 
-***
+---
 
-## Declaração de produto
+## Objetivo
 
-SolveLicita responde à pergunta: **"Essa prefeitura vai me pagar?"**
+SolveLicita responde à pergunta: **"Essa prefeitura tem capacidade fiscal de honrar seus contratos?"**
 
 O score mede a **capacidade estrutural de solvência de curto a médio prazo** de municípios brasileiros, com horizonte de avaliação de 12 a 24 meses, compatível com o ciclo de contratos públicos de fornecimento, serviços continuados e obras.
 
-Não é um modelo de previsão de inadimplência pontual. É um score de risco relativo baseado em múltiplas dimensões fiscais — análogo a um rating de crédito municipal, construído exclusivamente com dados públicos.
+Não é um modelo de previsão de inadimplência pontual. É um score de risco relativo baseado em múltiplas dimensões fiscais, construído exclusivamente com dados públicos.
 
-***
+---
 
 ## Fórmula
 
@@ -25,7 +25,7 @@ S = 30·f(Lliq) + 20·(1 − Ccauc) + 20·g(Eorcam)
 
 O score é expresso em pontos (0–100).
 
-***
+---
 
 ## Variáveis
 
@@ -38,7 +38,7 @@ O score é expresso em pontos (0–100).
 | `Autonomia` | DCA/FINBRA | Receita tributária própria / receita corrente | 10% | Anual |
 | `RPproc` | RREO Anexo 07 (SICONFI) | Cronicidade de restos a pagar liquidados não pagos | 5% | Bimestral/Sem. |
 
-***
+---
 
 ## Variável principal: Liquidez Líquida (Lliq)
 
@@ -50,9 +50,9 @@ Lliq = (DCL_total_pós_RP − DCL_RPPS_pós_RP) / Receita_Realizada
 
 Todos os componentes são extraídos do **RGF Anexo 05** (Demonstrativo da Disponibilidade de Caixa) do período mais recente entregue pelo município.
 
-- `DCL_total_pós_RP`: Disponibilidade de Caixa Líquida após dedução dos Restos a Pagar totais (processados + não processados), extraído da linha `DisponibilidadeDeCaixaLiquida`, coluna pós-RP
+- `DCL_total_pós_RP`: Disponibilidade de Caixa Líquida após dedução dos Restos a Pagar totais (processados + não processados), extraído da linha `DisponibilidadeDeCaixaLiquidaAposRP`, conta `TOTAL (IV) = (I + II + III)`
 - `DCL_RPPS_pós_RP`: porção atribuída ao RPPS — subtraída para evitar distorção do regime previdenciário próprio, que tem caixa vinculado de uso restrito
-- `Receita_Realizada`: receita total realizada do exercício, extraída do RREO Anexo 01 (`ReceitasExcetoIntraOrcamentarias`, coluna `Até o Bimestre`)
+- `Receita_Realizada`: receita total realizada do exercício, extraída do RREO Anexo 01 (`ReceitasExcetoIntraOrcamentarias`, coluna `Até o Bimestre (c)`)
 
 ### Por que DCL pós-RP e não Caixa Bruto
 
@@ -81,11 +81,11 @@ O município recebe flag `lliq_parcial = True` no output. Esta versão **superes
 
 Quando o RGF Anexo 05 mais recente disponível está **fora da janela aceitável** para o porte:
 
-- Aplica-se penalidade de **20% sobre a contribuição de `Lliq`** no score final (`decay_fator < 1.0`)
+- Aplica-se penalidade proporcional sobre a contribuição de `Lliq` no score final (`decay_fator < 1.0`)
 - O município recebe flag `dado_defasado = True` e `dias_atraso` no output
 - O fator de decay é calculado como: `decay = max(0, 1 − (dias_atraso − janela) / 365)`
 
-### Curva de pontuação (limiares fixos absolutos)
+### Curva de pontuação
 
 | Lliq | Pontuação | Interpretação |
 |---|---|---|
@@ -97,7 +97,7 @@ Quando o RGF Anexo 05 mais recente disponível está **fora da janela aceitável
 
 Valores `Lliq < −0.50` são sinalizados como `dado_suspeito = True` e têm score calculado com capping em −0.50. Possível causa: distorção de RPPS, cancelamento contábil de empenhos sem liquidação, ou erro de envio ao SICONFI.
 
-***
+---
 
 ## Ccauc — Risco de Bloqueio Federal (peso 20%)
 
@@ -112,7 +112,9 @@ Mede a **gravidade** das pendências do município no CAUC (Cadastro Único de C
 | **Leve** | Pendências de reporte (SICONFI, MCASP, PCASP) | Penalidade mínima |
 | **Regular** | Sem pendências | `Ccauc = 0.0` → 20 pts |
 
-***
+A coleta é feita via Portal de Dados Abertos do Tesouro (CKAN) — snapshot nacional filtrado para municípios da PB.
+
+---
 
 ## Eorcam — Execução Orçamentária (peso 20%)
 
@@ -137,7 +139,7 @@ A zona saudável é entre 90% e 105%.
 | 70% – 90% | proporcional 0.0→1.0 | Zona de atenção |
 | ≤ 70% | 0.0 | Colapso de arrecadação |
 
-***
+---
 
 ## Qsiconfi — Qualidade e Transparência (peso 15% + cap duro)
 
@@ -168,7 +170,7 @@ Independente do score numérico calculado pelos demais indicadores:
 
 **Justificativa:** dado ausente não é sinal neutro — é risco não quantificável, que em gestão de crédito equivale a rebaixamento automático.
 
-***
+---
 
 ## Autonomia — Receita Tributária Própria (peso 10% + flag)
 
@@ -185,11 +187,11 @@ Pontuação via **curva sigmoid calibrada por porte populacional**:
 | Médio | 50.000 – 200.000 |
 | Grande | > 200.000 hab. |
 
-***
+---
 
 ## RPproc — Cronicidade de Restos a Pagar (peso 5% + cap duro)
 
-Mede se o município tem **padrão crônico de não pagamento** de despesas já liquidadas. Responde à pergunta: *"esse município tem o hábito estrutural de empenhar, liquidar e não pagar?"*
+Mede se o município tem **padrão crônico de não pagamento** de despesas já liquidadas.
 
 ### Indicador base: rproc_pct
 
@@ -199,11 +201,9 @@ rproc_pct = RestosAPagarProcessadosENaoProcessadosLiquidadosAPagar / Receita_Rea
 
 Extraído do **RREO Anexo 07**, `cod_conta = RestosAPagarProcessadosENaoProcessadosLiquidadosAPagar`, coluna `Saldo e = (a+ b) - (c + d)`, linha `TOTAL (III) = (I + II)`.
 
-Captura o **saldo atual de despesas liquidadas inscritas em RP** — obrigações financeiras que o município reconheceu e deveria ter pago, mas não pagou.
-
 ### n_anos_cronicos
 
-Contagem de anos (sobre todos os exercícios 2020–2025 com RREO entregue) em que `rproc_pct > 3%`. Um ano acima do limiar indica que o município carregou um volume relevante de liquidados não pagos naquele exercício.
+Contagem de anos (sobre todos os exercícios 2020–2025 com RREO entregue) em que `rproc_pct > 3%`.
 
 ### Curva de pontuação
 
@@ -218,25 +218,25 @@ Contagem de anos (sobre todos os exercícios 2020–2025 com RREO entregue) em q
 
 ### Cap duro de classificação
 
-Municípios com `n_anos_cronicos ≥ 5` têm classificação máxima **travada em 🟡 Risco Médio**, independente do score numérico. O padrão de 5–6 anos consecutivos de liquidados não pagos indica comportamento estrutural incompatível com Risco Baixo.
+Municípios com `n_anos_cronicos ≥ 5` têm classificação máxima **travada em 🟡 Risco Médio**, independente do score numérico.
 
-***
+---
 
 ## Classificação de risco
 
-| Score | Classificação | Significado operacional |
-|---|---|---|
-| 75–100 | 🟢 Risco Baixo | Saúde fiscal sólida, sem bloqueios graves |
-| 55–74 | 🟡 Risco Médio | Avaliar pendências antes de participar |
-| 35–54 | 🔴 Risco Alto | Exigir garantias contratuais |
-| 0–34 | ⛔ Crítico | Histórico grave — risco elevado de atraso |
-| — | ⚫ Sem Dados | SICONFI não enviado — risco não calculável |
+| Score | Classificação |
+|---|---|
+| 75–100 | 🟢 Risco Baixo |
+| 55–74 | 🟡 Risco Médio |
+| 35–54 | 🔴 Risco Alto |
+| 0–34 | ⛔ Crítico |
+| — | ⚫ Sem Dados |
 
 **Caps duros independentes do score numérico:**
 - Transparência (`Qsiconfi`): ver seção acima
 - Cronicidade de RP (`RPproc`): `n_anos_cronicos ≥ 5` → teto 🟡 Risco Médio
 
-***
+---
 
 ## Tratamento de dados ausentes
 
@@ -248,42 +248,61 @@ Municípios com `n_anos_cronicos ≥ 5` têm classificação máxima **travada e
 | `Lliq` anômalo (< −0.50) | Capping em −0.50 + flag `dado_suspeito` |
 | `rproc_pct` indisponível em algum ano | Ano excluído do cômputo de `n_anos_cronicos` |
 | Município ausente no CAUC | Pior caso (`Ccauc = 1.0`) — conservador |
-| DCA ausente (sem Autonomia) | Contribuição = 0 — penaliza ausência de transparência |
+| DCA ausente (sem Autonomia) | Contribuição = 0 — penaliza ausência |
 
-***
+---
 
 ## Pipeline de cálculo
 
+A coleta e o processamento são etapas separadas. Cada coletor salva os dados brutos em `data/raw/`; cada processador lê o bruto e grava os indicadores derivados em `data/processed/`.
+
 ```
-siconfi.py               → data/raw/siconfi_rreo_pb.csv
-                           (RREO Anexo 01, Anexo 07 + RGF Anexo 05)
+src/collectors/siconfi.py
+    → data/raw/siconfi/siconfi_rreo_pb.csv   (RREO Anexos 01 e 07)
+    → data/raw/siconfi/siconfi_rgf_pb.csv    (RGF Anexo 05)
 
-siconfi_processor.py     → data/processed/siconfi_indicadores_pb.csv
-                           (Lliq via RGF Anexo 05 | eorcam via RREO An.01
-                            rproc_pct via RREO An.07 | rrestos_nproc_pct)
+src/processors/siconfi_processor.py
+    → data/processed/siconfi_indicadores_pb.csv
+      (Lliq via RGF An.05 | eorcam via RREO An.01 | rproc_pct via RREO An.07)
 
-cauc.py                  → data/processed/cauc_situacao_pb.csv
+src/collectors/cauc.py
+    → data/raw/cauc/cauc_raw_pb.csv
 
-dca.py                   → data/processed/dca_indicadores_pb.csv
-                           (Autonomia via FINBRA/DCA)
+src/processors/cauc_processor.py
+    → data/processed/cauc_situacao_pb.csv
 
-solvency.py              → data/outputs/score_municipios_pb.csv
-                           (score final + flags + contribuições por componente)
+src/collectors/dca.py
+    → data/raw/dca/dca_raw_pb.csv
 
-pncp_agregador.py        → data/outputs/score_municipios_pb_pncp.csv
-                           (enriquecimento com histórico de atrasos de pagamento)
+src/processors/dca_processor.py
+    → data/processed/dca_indicadores_pb.csv   (Autonomia via FINBRA/DCA)
 
-app/prep_data.py         → app/data/pb_score.geojson
+src/collectors/pncp.py
+    → data/raw/pncp/pncp_parcial.jsonl
+
+src/processors/pncp_processor.py
+    → data/processed/pncp_licitacoes_pb.csv
+
+src/engine/solvency.py
+    → data/outputs/score_municipios_pb.csv
+      (score final + flags + contribuições por componente)
+
+src/processors/pncp_agregador.py
+    → data/outputs/score_municipios_pb_pncp.csv
+      (enriquecimento com histórico de compras públicas)
+
+app/prep_data.py
+    → app/data/pb_score.geojson
 ```
 
-***
+---
 
 ## Limitações
 
-- `Lliq` mede liquidez estrutural declarada — não substitui análise de fluxo de caixa diário ou due diligence jurídica para contratos de alto valor
+- `Lliq` mede liquidez estrutural declarada — não substitui análise de fluxo de caixa diário ou due diligence jurídica
 - Dados SICONFI são autodeclarados pelo município — qualidade varia; `Qsiconfi` penaliza historicamente inconsistentes
-- CAUC é snapshot da data de coleta — pode mudar entre a consulta e a assinatura do contrato; recoletar antes de assinar é recomendado
+- CAUC é snapshot da data de coleta — pode mudar a qualquer momento; recoletar antes de qualquer decisão é recomendado
 - DCA/FINBRA tem defasagem anual estrutural (~14 meses no pior caso) — afeta `Autonomia` apenas; `Lliq` usa RGF com defasagem máxima de 90–210 dias
 - `Lliq` negativo extremo pode indicar distorção de RPPS ou cancelamento contábil de empenhos — flag `dado_suspeito` sinaliza, mas detecção completa requer auditoria manual do Balanço Patrimonial
-- `rproc_pct` captura RP liquidados (processados + NP liquidados) aguardando pagamento — não distingue municípios que quitaram por pagamento real daqueles que quitaram por cancelamento contábil
-- Fase 0 cobre apenas municípios da Paraíba (223 municípios)
+- `rproc_pct` não distingue municípios que quitaram RP por pagamento real daqueles que quitaram por cancelamento contábil
+- Fase 0 cobre apenas municípios da Paraíba (223 municípios) — curvas de Autonomia calibradas para esse universo
