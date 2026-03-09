@@ -1,0 +1,5 @@
+cod_ibge,municipio,bloqueado,qtd_pendencias,pendencias,data_pesquisa,data_coleta,fonte
+2500106,Água Branca,True,10,Regularidade Fiscal (RFB) | SIOPS (Saúde) | SIOPE (Educação) | SIOPE Complementar | SICONV/TRANSFEREGOV Prestação de Contas | CADIN | SICONFI RREO | SICONFI PCASP | SICONFI DCASP | SICONFI MCASP,06/03/2026,2026-03-08,CKAN-TesouroTransparente
+2500205,Aguiar,True,9,Regularidade Fiscal (RFB) | Regularidade Trabalhista (TST) | SIOPE Complementar | SICONV/TRANSFEREGOV Prestação de Contas | CADIN | SICONFI RREO | SICONFI PCASP | SICONFI DCASP | SICONFI MCASP,06/03/2026,2026-03-08,CKAN-TesouroTransparente
+2500304,Alagoa Grande,False,0,REGULAR,06/03/2026,2026-03-08,CKAN-TesouroTransparente
+2500502,Alagoinha,True,8,Regularidade Trabalhista (TST) | SIOPE Complementar | CADIN | SISTN (Garantias) | SICONFI RREO | SICONFI PCASP | SICONFI DCASP | SICONFI MCASP,06/03/2026,2026-03-08,CKAN-TesouroTransparente
