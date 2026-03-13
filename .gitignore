@@ -143,3 +143,11 @@ celerybeat-schedule
 celerybeat.pid
 db.sqlite3
 db.sqlite3-journal
+
+# ════════════════════════════════════════════════════════════════
+#  FRONTEND (Next.js)
+# ════════════════════════════════════════════════════════════════
+frontend/.next/
+frontend/node_modules/
+frontend/.env.local
+frontend/.env*.local

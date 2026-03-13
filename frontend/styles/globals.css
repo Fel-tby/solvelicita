@@ -1,0 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap');
+
+:root {
+  --bg-base:    #0a0d14;
+  --bg-panel:   #0f1320;
+  --bg-card:    #131929;
+  --border:     #1e2a3a;
+  --border-dim: #151e2e;
+  --text-hi:    #e8edf5;
+  --text-mid:   #8899aa;
+  --text-lo:    #3d4f63;
+  --accent:     #3b82f6;
+
+  --risk-baixo:    #22c55e;
+  --risk-medio:    #eab308;
+  --risk-alto:     #ef4444;
+  --risk-critico:  #991b1b;
+  --risk-nd:       #374151;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--bg-base);
+  color: var(--text-hi);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* Leaflet overrides */
+.leaflet-container { background: #0a0d14 !important; }
+.leaflet-control-zoom a {
+  background: var(--bg-card) !important;
+  color: var(--text-mid) !important;
+  border-color: var(--border) !important;
+}
+.leaflet-control-zoom a:hover {
+  background: var(--bg-panel) !important;
+  color: var(--text-hi) !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }

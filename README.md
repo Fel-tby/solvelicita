@@ -160,5 +160,3 @@ pytest -v    # verbose
 > SolveLicita. *Score de Solvência Municipal — Paraíba*. 2026. Disponível em: https://solvelicita.streamlit.app. Código e metodologia: https://github.com/Fel-tby/solvelicita.
 
 ---
-
-Dados 100% públicos · Nenhum dado pessoal coletado · Código aberto

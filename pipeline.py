@@ -22,6 +22,7 @@ Etapas disponíveis:
 import sys
 import time
 from pathlib import Path
+from src.utils.supabase_sync import run as supabase_sync
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
@@ -160,6 +161,9 @@ def etapa_score() -> None:
     print("\n[2/2] PNCP agregador...")
     pncp_agregador.run()
 
+    print("\n── Sincronizando com Supabase...")
+    supabase_sync()
+
 
 def etapa_app() -> None:
     print("\n" + "═" * 55)
@@ -244,7 +248,7 @@ def main() -> None:
     print("╔══════════════════════════════════════════════════════╗")
     print(f"║  ✅ Pipeline concluído em {elapsed/60:.1f} min"
           + " " * (27 - len(f"{elapsed/60:.1f}")) + "║")
-    print("║  Próximo passo: streamlit run app/main.py            ║")
+    print("║  Dashboard: https://solvelicita.vercel.app           ║")
     print("╚══════════════════════════════════════════════════════╝")
     print()
 
