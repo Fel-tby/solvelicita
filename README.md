@@ -75,14 +75,16 @@ Coleta, processamento, cálculo do score e geração do mapa são etapas separad
 flowchart LR
     PL(["pipeline.py"])
 
-    PL --> COLLECT & SCORE
+    PL --> COLLECT
 
     subgraph COLLECT["COLLECT"]
         direction TB
-        A1["SICONFI\nasync · ~25k req"]
+        A1["SICONFI
+async · ~25k req"]
         A2["CAUC / CKAN"]
         A3["DCA / STN"]
-        A4["PNCP\ncheckpoint"]
+        A4["PNCP
+checkpoint"]
     end
 
     subgraph PROCESS["PROCESS"]
@@ -97,13 +99,13 @@ flowchart LR
         direction TB
         C1["solvency.py · classifier"]
         C2["pncp_agregador"]
+        C3["supabase_sync"]
     end
 
-    subgraph APP["APP"]
+    subgraph DEPLOY["DEPLOY"]
         direction TB
-        D1["prep_data.py"]
-        D2["pb_score.geojson"]
-        D3(["solvelicita.tech"])
+        DB[("Supabase")]
+        SITE(["solvelicita.tech"])
     end
 
     A1 --> B1
@@ -113,15 +115,14 @@ flowchart LR
 
     B1 & B2 & B3 --> C1
     B4 --> C2
-
-    C1 & C2 --> D1
-    D1 --> D2 --> D3
+    C1 & C2 --> C3
+    C3 --> DB --> SITE
 
     style PL      fill:#313244,color:#cdd6f4,stroke:#89b4fa,stroke-width:2px
     style COLLECT fill:#1e1e2e,color:#cdd6f4,stroke:#a6e3a1,stroke-width:2px
     style PROCESS fill:#1e1e2e,color:#cdd6f4,stroke:#89dceb,stroke-width:2px
     style SCORE   fill:#1e1e2e,color:#cdd6f4,stroke:#f9e2af,stroke-width:2px
-    style APP     fill:#1e1e2e,color:#cdd6f4,stroke:#cba6f7,stroke-width:2px
+    style DEPLOY  fill:#1e1e2e,color:#cdd6f4,stroke:#cba6f7,stroke-width:2px
 ```
 
 ---
