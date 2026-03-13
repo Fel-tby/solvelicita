@@ -1,7 +1,7 @@
 # SolveLicita
 
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Streamlit](https://img.shields.io/badge/Streamlit-app%20ao%20vivo-FF4B4B?logo=streamlit&logoColor=white)](https://solvelicita.streamlit.app)
+[![Site](https://img.shields.io/badge/site-solvelicita.tech-4f46e5?logo=vercel&logoColor=white)](https://solvelicita.tech)
 [![pytest](https://img.shields.io/badge/testes-pytest-0A9EDC?logo=pytest&logoColor=white)](tests/)
 [![Dados Públicos](https://img.shields.io/badge/dados-100%25%20públicos-2ea44f)](docs/METODOLOGIA.md)
 [![License: MIT](https://img.shields.io/badge/Licença-MIT-yellow.svg)](LICENSE)
@@ -63,7 +63,7 @@ Além do score numérico, dois caps de classificação operam de forma independe
 
 **Medianas estaduais:** Execução orçamentária 95,6% · Lliq/Receita 0,083 · Autonomia tributária 0,028
 
-O dashboard interativo, com ficha individual por município, está disponível em **[solvelicita.streamlit.app](https://solvelicita.streamlit.app)**.
+O dashboard interativo, com ficha individual por município, está disponível em **[solvelicita.tech](https://solvelicita.tech)**.
 
 ---
 
@@ -103,7 +103,7 @@ flowchart LR
         direction TB
         D1["prep_data.py"]
         D2["pb_score.geojson"]
-        D3(["streamlit run app/main.py"])
+        D3(["solvelicita.tech"])
     end
 
     A1 --> B1
@@ -137,7 +137,9 @@ venv\Scripts\activate        # Windows
 pip install -r requirements.txt
 
 python pipeline.py           # interativo: escolha modo e etapas
-streamlit run app/main.py    # abre o dashboard
+
+# opcional — dashboard local de debug (Streamlit):
+streamlit run app/main.py
 ```
 
 ```bash
@@ -157,6 +159,6 @@ pytest -v    # verbose
 
 ## Como citar
 
-> SolveLicita. *Score de Solvência Municipal — Paraíba*. 2026. Disponível em: https://solvelicita.streamlit.app. Código e metodologia: https://github.com/Fel-tby/solvelicita.
+> SolveLicita. *Score de Solvência Municipal — Paraíba*. 2026. Disponível em: https://solvelicita.tech. Código e metodologia: https://github.com/Fel-tby/solvelicita.
 
 ---
