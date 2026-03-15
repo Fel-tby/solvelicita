@@ -4,12 +4,17 @@ SolveLicita
 
 Responsabilidades:
 1. Ler processed/pncp_licitacoes_pb.csv   (produzido por pncp_processor.py)
-2. Agregar por município: volume, valor homologado, padrão de compra, temporalidade
-3. Fazer merge com outputs/score_municipios_pb.csv (output do solvency.py)
-4. Exportar outputs/score_municipios_pb_pncp.csv para uso no app e no relatório
+2. Filtrar para os últimos 12 meses (dataPublicacaoPncp)
+3. Agregar por município: volume, valor homologado, padrão de compra, temporalidade
+4. Fazer merge com outputs/score_municipios_pb.csv (output do solvency.py)
+5. Exportar outputs/score_municipios_pb_pncp.csv para uso no app e no relatório
 
 Não recalcula scores — apenas enriquece o output do solvency.py com
 a dimensão de "exposição de mercado" (quanto o município compra e como).
+
+Janela temporal: últimos 12 meses a partir da data de execução.
+Todos os indicadores PNCP (n_licitacoes, valor_homologado_total, dispensa)
+refletem apenas esse período.
 
 Input:
     processed/pncp_licitacoes_pb.csv   (produzido por pncp_processor.py)
@@ -33,15 +38,19 @@ from utils.paths import PROCESSED, OUTPUTS
 # Modalidades que dispensam competição (IDs fixos da Lei 14.133/2021)
 MODALIDADES_SEM_LICITACAO = {8, 9}  # 8 = Dispensa, 9 = Inexigibilidade
 
+# Janela temporal para agregação PNCP
+JANELA_MESES = 12
+
 
 def run() -> pd.DataFrame:
     """
-    Agrega dados PNCP por município e faz merge com score de solvência.
-    Retorna o DataFrame enriquecido.
+    Agrega dados PNCP dos últimos 12 meses por município e faz merge
+    com score de solvência. Retorna o DataFrame enriquecido.
     """
     print("=" * 65)
     print(" PNCP Aggregator — SolveLicita")
     print(" Enriquecimento do score com dados de mercado")
+    print(f" Janela temporal : últimos {JANELA_MESES} meses")
     print("=" * 65)
 
     # ── 1. Carga ──────────────────────────────────────────────────────────────
@@ -56,10 +65,25 @@ def run() -> pd.DataFrame:
     score["cod_ibge"]      = score["cod_ibge"].str.zfill(7)
 
     print(f"  PNCP  : {len(pncp):,} licitações | "
-          f"{pncp['municipio_ibge'].nunique()} municípios")
+          f"{pncp['municipio_ibge'].nunique()} municípios (histórico completo)")
     print(f"  Score : {len(score)} municípios")
 
-    # ── 2. Flags auxiliares ───────────────────────────────────────────────────
+    # ── 2. Filtro temporal — últimos 12 meses ─────────────────────────────────
+    corte = pd.Timestamp.today() - pd.DateOffset(months=JANELA_MESES)
+    pncp["dataPublicacaoPncp"] = pd.to_datetime(
+        pncp["dataPublicacaoPncp"], errors="coerce"
+    )
+
+    antes = len(pncp)
+    pncp  = pncp[pncp["dataPublicacaoPncp"] >= corte].copy()
+    depois = len(pncp)
+
+    print(f"\n⏱  Filtro {JANELA_MESES} meses (>= {corte.date()}):")
+    print(f"  Antes : {antes:,} licitações")
+    print(f"  Depois: {depois:,} licitações ({antes - depois:,} removidas)")
+    print(f"  Municípios restantes: {pncp['municipio_ibge'].nunique()}")
+
+    # ── 3. Flags auxiliares ───────────────────────────────────────────────────
     pncp["eh_dispensa"] = pncp["modalidadeId"].isin(MODALIDADES_SEM_LICITACAO)
 
     pncp["valor_hom_dispensa"] = pncp["valorTotalHomologado"].where(
@@ -68,7 +92,7 @@ def run() -> pd.DataFrame:
 
     pncp["valorTotalHomologado"] = pncp["valorTotalHomologado"].fillna(0)
 
-    # ── 3. Agregação por município ────────────────────────────────────────────
+    # ── 4. Agregação por município ────────────────────────────────────────────
     print("\n🔄 Agregando por município...")
 
     agg = pncp.groupby("municipio_ibge").agg(
@@ -87,15 +111,15 @@ def run() -> pd.DataFrame:
     agg["alerta_dispensa"] = (agg["pct_dispensa"] > 0.30)
 
     print(f"  Municípios com dados PNCP : {len(agg)}")
-    print(f"  Sem dados PNCP            : {len(score) - len(agg)}")
+    print(f"  Sem dados PNCP (12 meses) : {len(score) - len(agg)}")
     print(f"  Total licitações          : {agg['n_licitacoes'].sum():,.0f}")
     print(f"  Valor homologado total    : "
           f"R$ {agg['valor_homologado_total'].sum():,.0f}")
 
-    # ── 4. Merge com score ────────────────────────────────────────────────────
+    # ── 5. Merge com score ────────────────────────────────────────────────────
     merged = score.merge(agg, on="cod_ibge", how="left")
 
-    # ── 5. Diagnóstico de cruzamentos para o relatório ────────────────────────
+    # ── 6. Diagnóstico de cruzamentos para o relatório ────────────────────────
     print("\n📊 Cruzamentos para o relatório:")
 
     risco_baixo = merged[merged["classificacao"] == "🟢 Risco Baixo"]
@@ -130,12 +154,13 @@ def run() -> pd.DataFrame:
     if len(alerta):
         print(f"  {alerta[['ente', 'score', 'pct_dispensa']].to_string(index=False)}")
 
-    # ── 6. Exportação ─────────────────────────────────────────────────────────
+    # ── 7. Exportação ─────────────────────────────────────────────────────────
     OUT = OUTPUTS / "score_municipios_pb_pncp.csv"
     merged.to_csv(OUT, index=False, encoding="utf-8-sig")
 
     print(f"\n✅ Exportado : {OUT.name}")
     print(f"   {len(merged)} municípios | {len(merged.columns)} colunas")
+    print(f"   Referência PNCP: últimos {JANELA_MESES} meses")
     print("=" * 65)
 
     return merged
