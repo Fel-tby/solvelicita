@@ -14,7 +14,7 @@
 
 Municípios brasileiros contratam bilhões em fornecimentos por ano. Mas qual prefeitura tem capacidade real de pagar o que contrata?
 
-Essa pergunta não tem resposta pública, padronizada e acessível. Os dados existem — estão nos sistemas do Tesouro Nacional — mas dispersos em relatórios técnicos que exigem conhecimento contábil para interpretar. SolveLicita os cruza e os transforma em um único número por município.
+Essa pergunta não tem resposta pública, padronizada e acessível. Os dados existem, estão nos sistemas do Tesouro Nacional. Mas, dispersos em relatórios técnicos que exigem conhecimento contábil para interpretar. SolveLicita os cruza e os transforma em um único número por município.
 
 ---
 
