@@ -20,18 +20,32 @@ def pontuar_lliq(x: float):
     DCL pós-RP excl. RPPS / Receita Realizada → [0, 1].
     Valores < −0.50 são capados antes do cálculo (sinalizados separadamente).
 
-    ≥ 0.20          → 1.00
-    0.10 – 0.20     → linear   0.75→1.00
-    0.00 – 0.10     → linear   0.50→0.75
-    −0.50 – 0.00    → quadrático 0→0.50
+    Curva v7.0 — âncoras exatas:
+      ≥  0.35       → 1.00
+       0.10 – 0.35  → linear 0.60 → 1.00   [ (x−0.10)/0.25 × 0.40 + 0.60 ]
+       0.00 – 0.10  → linear 0.35 → 0.60   [ (x/0.10)      × 0.25 + 0.35 ]
+      −0.50 – 0.00  → linear 0.00 → 0.35   [ (x+0.50)/0.50 × 0.35        ]
+
+    Motivação da mudança em relação à v6.2:
+      - Teto deslocado de 0.20 para 0.35: apenas 8% dos municípios atingem
+        norm=1.0 (era 24%), eliminando compressão da escala no intervalo mais
+        informativo (0.05 – 0.30, que concentra 74% da distribuição real PB).
+      - Piso em lliq=0 reduzido de 0.50 para 0.35: score neutro (caixa zero)
+        deixa de receber metade dos pontos máximos.
+      - Negativo linear em vez de quadrático: distribui penalidade de forma
+        uniforme; a curva quadrática anterior suavizava excessivamente a faixa
+        −0.10 a 0.00 (Δ norm v6.2→v7.0 nessa faixa: −0.09).
     """
     if pd.isna(x):
         return None
     x = max(x, LIMIAR_LLIQ_SUSPEITO)
-    if x >= 0.20: return 1.00
-    if x >= 0.10: return round(0.75 + (x - 0.10) / 0.10 * 0.25, 4)
-    if x >= 0.00: return round(0.50 + (x / 0.10) * 0.25, 4)
-    return round(max(0.0, 0.50 * (1 - (-x / 0.50)) ** 2), 4)
+    if x >= 0.35:
+        return 1.00
+    if x >= 0.10:
+        return round(0.60 + (x - 0.10) / 0.25 * 0.40, 4)
+    if x >= 0.00:
+        return round(0.35 + (x / 0.10) * 0.25, 4)
+    return round(max(0.0, (x + 0.50) / 0.50 * 0.35), 4)
 
 
 def _dias_atraso(ano, periodo, periodicidade) -> int:
@@ -71,12 +85,12 @@ def calcular(df_si: pd.DataFrame, df_mu: pd.DataFrame) -> pd.DataFrame:
     Prioridade Q > S quando ambas periodicidades existem no mesmo exercício.
 
     Entrada : df_si com [cod_ibge, ano, lliq, periodo_rgf,
-                          periodicidade_rgf, lliq_parcial]
+                         periodicidade_rgf, lliq_parcial]
               df_mu com [cod_ibge, populacao]
     Saída   : DataFrame [cod_ibge, lliq_raw, lliq_norm, lliq_ano,
-                          lliq_periodo, lliq_periodicidade, lliq_parcial,
-                          dias_atraso, decay_fator, dado_defasado,
-                          dado_suspeito_lliq, contrib_lliq]
+                         lliq_periodo, lliq_periodicidade, lliq_parcial,
+                         dias_atraso, decay_fator, dado_defasado,
+                         dado_suspeito_lliq, contrib_lliq]
     """
     df_base = (
         df_si[df_si["ano"].isin(ANOS_REF) & df_si["lliq"].notna()]
@@ -93,16 +107,16 @@ def calcular(df_si: pd.DataFrame, df_mu: pd.DataFrame) -> pd.DataFrame:
         .reset_index()
         [["cod_ibge", "lliq", "ano", "periodo_rgf", "periodicidade_rgf", "lliq_parcial"]]
         .rename(columns={
-            "lliq":              "lliq_raw",
-            "ano":               "lliq_ano",
-            "periodo_rgf":       "lliq_periodo",
+            "lliq"            : "lliq_raw",
+            "ano"             : "lliq_ano",
+            "periodo_rgf"     : "lliq_periodo",
             "periodicidade_rgf": "lliq_periodicidade",
         })
     )
 
     df_base = df_base.merge(df_mu[["cod_ibge", "populacao"]], on="cod_ibge", how="left")
 
-    df_base["lliq_norm"]          = df_base["lliq_raw"].apply(pontuar_lliq)
+    df_base["lliq_norm"]        = df_base["lliq_raw"].apply(pontuar_lliq)
     df_base["dado_suspeito_lliq"] = (
         df_base["lliq_raw"].notna() & (df_base["lliq_raw"] < LIMIAR_LLIQ_SUSPEITO)
     )

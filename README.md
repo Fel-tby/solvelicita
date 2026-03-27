@@ -14,7 +14,7 @@
 
 Municípios brasileiros contratam bilhões em fornecimentos por ano. Mas qual prefeitura tem capacidade real de pagar o que contrata?
 
-Essa pergunta não tem resposta pública, padronizada e acessível. Os dados existem, estão nos sistemas do Tesouro Nacional, mas dispersos em relatórios técnicos que exigem conhecimento contábil para interpretar. SolveLicita os cruza e os transforma em um único número por município.
+Essa pergunta não tem resposta pública, padronizada e acessível. Os dados existem — estão nos sistemas do Tesouro Nacional — mas dispersos em relatórios técnicos que exigem conhecimento contábil para interpretar. SolveLicita os cruza e os transforma em um único número por município.
 
 ---
 
@@ -24,23 +24,23 @@ Um **Score de Solvência (0–100)** calculado a partir de seis indicadores fisc
 
 | Indicador | Fonte | Peso | O que mede |
 |---|---|---|---|
-| Liquidez Líquida | SICONFI / RGF Anexo 05 | 30% | Caixa disponível após Restos a Pagar |
-| Bloqueio Federal | CAUC / STN | 20% | Pendências que bloqueiam repasses federais |
-| Execução Orçamentária | SICONFI / RREO Anexo 01 | 20% | Aderência entre receita prevista e realizada |
-| Transparência Fiscal | SICONFI | 15% | Continuidade de entrega de dados públicos |
-| Autonomia Tributária | FINBRA / DCA | 10% | Dependência do FPM vs receita própria |
-| RP Crônicos | SICONFI / RREO Anexo 07 | 5% | Histórico de dívidas com fornecedores |
+| Liquidez Líquida | SICONFI / RGF Anexo 05 | **35%** | Caixa disponível após Restos a Pagar |
+| RP Crônicos | SICONFI / RREO Anexo 07 | **15%** | Histórico de dívidas com fornecedores |
+| Execução Orçamentária | SICONFI / RREO Anexo 01 | **15%** | Aderência entre receita prevista e realizada |
+| Transparência Fiscal | SICONFI | **15%** | Continuidade de entrega de dados públicos |
+| Autonomia Tributária | FINBRA / DCA | **10%** | Dependência do FPM vs receita própria |
+| Bloqueio Federal | CAUC / STN | **10%** | Pendências que bloqueiam repasses federais |
 
-A fórmula, os limiares e as justificativas de cada escolha estão em [`docs/METODOLOGIA.md`](docs/METODOLOGIA.md).
+A fórmula, as curvas de pontuação e as justificativas de cada escolha estão em [`docs/METODOLOGIA.md`](docs/METODOLOGIA.md).
 
 **Classificação:**
 
 | Score | Classificação |
 |---|---|
-| ≥ 75 | 🟢 Risco Baixo |
-| 55 – 74 | 🟡 Risco Médio |
-| 35 – 54 | 🔴 Risco Alto |
-| < 35 | ⛔ Crítico |
+| ≥ 80 | 🟢 Risco Baixo |
+| 60 – 79 | 🟡 Risco Médio |
+| 40 – 59 | 🔴 Risco Alto |
+| < 40 | ⛔ Crítico |
 | — | ⚫ Sem Dados |
 
 Além do score numérico, dois caps de classificação operam de forma independente: municípios com histórico de não entrega de dados não podem ser classificados como Risco Baixo, e municípios com padrão crônico de Restos a Pagar Processados têm teto em Risco Médio.
@@ -148,11 +148,29 @@ pytest       # roda os testes automatizados
 pytest -v    # verbose
 ```
 
+**Backtest de validação:**
+
+```bash
+python src/analysis/backtest_validacao.py                  # resultado base
+python src/analysis/backtest_validacao.py --excluir-t0 2020  # sensibilidade COVID
+python src/analisys/backtest_validacao.py --sem-rproc      # isola circularidade
+```
+
+---
+
+## Documentação
+
+| Documento | Conteúdo |
+|---|---|
+| [`docs/METODOLOGIA.md`](docs/METODOLOGIA.md) | Fórmula, pesos, curvas de pontuação, caps duros, tratamento de dados ausentes |
+| [`docs/VALIDACAO.md`](docs/VALIDACAO.md) | Backtest walk-forward, AUC-ROC, Spearman, análise de sensibilidade, limitações |
+
 ---
 
 ## Status
 
 - [x] Paraíba — 223 municípios, 2020–2025
+- [x] Backtest walk-forward validado (AUC 0.75 era completa)
 - [ ] Relatório narrativo público
 - [ ] Expansão para demais estados
 

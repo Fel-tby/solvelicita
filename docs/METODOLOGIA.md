@@ -1,8 +1,10 @@
 # Metodologia do Score de Solvência
 
-**Versão:** 6.2
-**Última atualização:** Março/2026
+**Versão:** 7.0  
+**Última atualização:** Março/2026  
 **Aviso:** Score baseado exclusivamente em dados oficiais declarados pelo próprio município ao Tesouro Nacional (SICONFI/RREO/RGF e FINBRA/DCA) e ao Governo Federal (CAUC/STN). Qualquer questionamento sobre os dados deve ser direcionado às fontes originais.
+
+> A evidência empírica de que o score discrimina risco real está documentada separadamente em [VALIDACAO.md](./VALIDACAO.md).
 
 ---
 
@@ -19,8 +21,8 @@ Não é um modelo de previsão de inadimplência pontual. É um score de risco r
 ## Fórmula
 
 ```
-S = 30·f(Lliq) + 20·(1 − Ccauc) + 20·g(Eorcam)
-  + 15·Qsiconfi + 10·h(Autonomia) + 5·i(RPproc)
+S = 35·f(Lliq) + 10·(1 − Ccauc) + 15·g(Eorcam)
+  + 15·Qsiconfi + 10·h(Autonomia) + 15·i(RPproc)
 ```
 
 O score é expresso em pontos (0–100).
@@ -31,12 +33,12 @@ O score é expresso em pontos (0–100).
 
 | Variável | Fonte | O que mede | Peso | Frequência |
 |---|---|---|---|---|
-| `Lliq` | RGF Anexo 05 (SICONFI) | Liquidez líquida: DCL pós-RP excl. RPPS / Receita Realizada | 30% | Bimestral/Sem. |
-| `Ccauc` | CAUC/STN | Gravidade das pendências para recebimento federal | 20% | Diária |
-| `Eorcam` | RREO Anexo 01 (SICONFI) | Execução orçamentária média ponderada por recência | 20% | Bimestral/Sem. |
+| `Lliq` | RGF Anexo 05 (SICONFI) | Liquidez líquida: DCL pós-RP excl. RPPS / Receita Realizada | 35% | Bimestral/Sem. |
+| `Ccauc` | CAUC/STN | Gravidade das pendências para recebimento federal | 10% | Diária |
+| `Eorcam` | RREO Anexo 01 (SICONFI) | Execução orçamentária média ponderada por recência | 15% | Bimestral/Sem. |
 | `Qsiconfi` | RREO histórico | % de anos com RREO entregue (2020–2025) + cap duro | 15% | Histórico |
 | `Autonomia` | DCA/FINBRA | Receita tributária própria / receita corrente | 10% | Anual |
-| `RPproc` | RREO Anexo 07 (SICONFI) | Cronicidade de restos a pagar liquidados não pagos | 5% | Bimestral/Sem. |
+| `RPproc` | RREO Anexo 07 (SICONFI) | Cronicidade de restos a pagar liquidados não pagos | 15% | Bimestral/Sem. |
 
 ---
 
@@ -89,34 +91,32 @@ Quando o RGF Anexo 05 mais recente disponível está **fora da janela aceitável
 
 | Lliq | Pontuação | Interpretação |
 |---|---|---|
-| ≥ 0.20 | 1.00 (máximo) | Folga de liquidez sólida |
-| 0.10 – 0.20 | linear 0.75→1.00 | Liquidez razoável |
-| 0.00 – 0.10 | linear 0.50→0.75 | Liquidez positiva, mas estreita |
-| −0.50 – 0.00 | quadrático 0→0.50 | Passivo imediato maior que caixa |
+| ≥ 0.35 | 1.00 (máximo) | Folga de liquidez sólida |
+| 0.10 – 0.35 | linear 0.60→1.00 | Liquidez razoável |
+| 0.00 – 0.10 | linear 0.35→0.60 | Liquidez positiva, mas estreita |
+| −0.50 – 0.00 | linear 0.00→0.35 | Passivo imediato maior que caixa |
 | < −0.50 | 0.00 + ⚑ | Anomalia — `dado_suspeito = True` |
 
 Valores `Lliq < −0.50` são sinalizados como `dado_suspeito = True` e têm score calculado com capping em −0.50. Possível causa: distorção de RPPS, cancelamento contábil de empenhos sem liquidação, ou erro de envio ao SICONFI.
 
 ---
 
-## Ccauc — Risco de Bloqueio Federal (peso 20%)
+## Ccauc — Risco de Bloqueio Federal (peso 10%)
 
 Mede a **gravidade** das pendências do município no CAUC (Cadastro Único de Convênios). É o único indicador genuinamente independente das fontes SICONFI: não é autodeclarado pelo município, é verificado externamente pelo Governo Federal.
-
-**Gatilho punitivo:** qualquer pendência **grave** zera a contribuição do CAUC, independente dos demais indicadores.
 
 | Tipo de pendência | Exemplos | Impacto |
 |---|---|---|
 | **Grave** | RFB, PGFN, CADIN, SISTN Dívida, LRF Executivo, TCU, CGU | `Ccauc = 1.0` → 0 pts |
 | **Moderada** | FGTS, TST, SIOPS, SIOPE, LRF Legislativo, SICONV | Penalidade proporcional, teto 0.5 |
 | **Leve** | Pendências de reporte (SICONFI, MCASP, PCASP) | Penalidade mínima |
-| **Regular** | Sem pendências | `Ccauc = 0.0` → 20 pts |
+| **Regular** | Sem pendências | `Ccauc = 0.0` → 10 pts |
 
 A coleta é feita via Portal de Dados Abertos do Tesouro (CKAN) — snapshot nacional filtrado para municípios da PB.
 
 ---
 
-## Eorcam — Execução Orçamentária (peso 20%)
+## Eorcam — Execução Orçamentária (peso 15%)
 
 Mede se o município arrecada o que planejou. Usa **média ponderada por recência** sobre os exercícios com RREO entregue (2020–2025):
 
@@ -189,7 +189,7 @@ Pontuação via **curva sigmoid calibrada por porte populacional**:
 
 ---
 
-## RPproc — Cronicidade de Restos a Pagar (peso 5% + cap duro)
+## RPproc — Cronicidade de Restos a Pagar (peso 15% + cap duro)
 
 Mede se o município tem **padrão crônico de não pagamento** de despesas já liquidadas.
 
@@ -203,7 +203,7 @@ Extraído do **RREO Anexo 07**, `cod_conta = RestosAPagarProcessadosENaoProcessa
 
 ### n_anos_cronicos
 
-Contagem de anos (sobre todos os exercícios 2020–2025 com RREO entregue) em que `rproc_pct > 3%`.
+Contagem de anos (sobre todos os exercícios 2020–2025 com RREO entregue) em que `rproc_pct > 3%`. Apenas anos **anteriores a T** são considerados no cálculo — sem uso de informação futura.
 
 ### Curva de pontuação
 
@@ -226,10 +226,10 @@ Municípios com `n_anos_cronicos ≥ 5` têm classificação máxima **travada e
 
 | Score | Classificação |
 |---|---|
-| 75–100 | 🟢 Risco Baixo |
-| 55–74 | 🟡 Risco Médio |
-| 35–54 | 🔴 Risco Alto |
-| 0–34 | ⛔ Crítico |
+| 80–100 | 🟢 Risco Baixo |
+| 60–79 | 🟡 Risco Médio |
+| 40–59 | 🔴 Risco Alto |
+| 0–39 | ⛔ Crítico |
 | — | ⚫ Sem Dados |
 
 **Caps duros independentes do score numérico:**
@@ -249,51 +249,6 @@ Municípios com `n_anos_cronicos ≥ 5` têm classificação máxima **travada e
 | `rproc_pct` indisponível em algum ano | Ano excluído do cômputo de `n_anos_cronicos` |
 | Município ausente no CAUC | Pior caso (`Ccauc = 1.0`) — conservador |
 | DCA ausente (sem Autonomia) | Contribuição = 0 — penaliza ausência |
-
----
-
-## Pipeline de cálculo
-
-A coleta e o processamento são etapas separadas. Cada coletor salva os dados brutos em `data/raw/`; cada processador lê o bruto e grava os indicadores derivados em `data/processed/`.
-
-```
-src/collectors/siconfi.py
-    → data/raw/siconfi/siconfi_rreo_pb.csv   (RREO Anexos 01 e 07)
-    → data/raw/siconfi/siconfi_rgf_pb.csv    (RGF Anexo 05)
-
-src/processors/siconfi_processor.py
-    → data/processed/siconfi_indicadores_pb.csv
-      (Lliq via RGF An.05 | eorcam via RREO An.01 | rproc_pct via RREO An.07)
-
-src/collectors/cauc.py
-    → data/raw/cauc/cauc_raw_pb.csv
-
-src/processors/cauc_processor.py
-    → data/processed/cauc_situacao_pb.csv
-
-src/collectors/dca.py
-    → data/raw/dca/dca_raw_pb.csv
-
-src/processors/dca_processor.py
-    → data/processed/dca_indicadores_pb.csv   (Autonomia via FINBRA/DCA)
-
-src/collectors/pncp.py
-    → data/raw/pncp/pncp_parcial.jsonl
-
-src/processors/pncp_processor.py
-    → data/processed/pncp_licitacoes_pb.csv
-
-src/engine/solvency.py
-    → data/outputs/score_municipios_pb.csv
-      (score final + flags + contribuições por componente)
-
-src/processors/pncp_agregador.py
-    → data/outputs/score_municipios_pb_pncp.csv
-      (enriquecimento com histórico de compras públicas)
-
-app/prep_data.py
-    → app/data/pb_score.geojson
-```
 
 ---
 
