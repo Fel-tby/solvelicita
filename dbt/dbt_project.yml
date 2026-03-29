@@ -1,0 +1,18 @@
+name: solvelicita
+version: "1.0.0"
+profile: solvelicita
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+
+models:
+  solvelicita:
+    staging:
+      +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: table
+      +schema: intermediate
+    mart:
+      +materialized: table
+      +schema: mart

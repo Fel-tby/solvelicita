@@ -1,0 +1,11 @@
+solvelicita:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: service-account
+      project: solvelicita
+      dataset: staging
+      location: southamerica-east1
+      keyfile: "{{ env_var('GCP_SA_KEY_PATH') }}"
+      threads: 4

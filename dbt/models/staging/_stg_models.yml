@@ -1,0 +1,33 @@
+version: 2
+
+models:
+  - name: stg_cauc
+    columns:
+      - name: cod_ibge
+        tests: [not_null, unique]
+      - name: uf
+        tests:
+          - accepted_values:
+              values: ['PB']
+
+  - name: stg_siconfi_rreo
+    columns:
+      - name: cod_ibge
+        tests: [not_null]
+      - name: ano
+        tests: [not_null]
+
+  - name: stg_siconfi_rgf
+    columns:
+      - name: cod_ibge
+        tests: [not_null]
+
+  - name: stg_dca
+    columns:
+      - name: cod_ibge
+        tests: [not_null]
+
+  - name: stg_pncp
+    columns:
+      - name: numero_controle_pncp
+        tests: [not_null, unique]

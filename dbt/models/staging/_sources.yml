@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+  - name: raw
+    database: solvelicita
+    schema: raw
+    tables:
+      - name: cauc
+      - name: dca
+      - name: pncp
+      - name: siconfi_rreo
+      - name: siconfi_rgf

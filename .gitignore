@@ -1,4 +1,4 @@
-# ── Python ───────────────────────────────────────────────────────
+# Python
 __pycache__/
 *.py[codz]
 *$py.class
@@ -13,18 +13,21 @@ wheels/
 share/python-wheels/
 
 
-# ── Ambientes virtuais ────────────────────────────────────────────
+
+# Ambientes virtuais
 .env
 .envrc
 .venv
 venv/
+venv_dbt/
 env/
 ENV/
 venv.bak/
 env.bak/
 
 
-# ── Ferramentas de empacotamento ──────────────────────────────────
+
+# Ferramentas de empacotamento 
 .pdm-python
 .pdm-build/
 .pixi/
@@ -34,7 +37,8 @@ pip-delete-this-directory.txt
 .pypirc
 
 
-# ── Testes e cobertura ────────────────────────────────────────────
+
+# Testes e cobertura
 .pytest_cache/
 .coverage
 .coverage.*
@@ -47,7 +51,8 @@ nosetests.xml
 .hypothesis/
 
 
-# ── Tipagem e linting ─────────────────────────────────────────────
+
+# Tipagem e linting
 .mypy_cache/
 .dmypy.json
 dmypy.json
@@ -57,7 +62,8 @@ dmypy.json
 cython_debug/
 
 
-# ── IDEs e editores ───────────────────────────────────────────────
+
+# IDEs e editores
 .vscode/
 # .idea/           ← descomente se não usa JetBrains no time
 .spyderproject
@@ -68,54 +74,64 @@ cython_debug/
 .abstra/
 
 
-# ── Jupyter / notebooks ───────────────────────────────────────────
+
+# Jupyter / notebooks
 .ipynb_checkpoints
 profile_default/
 ipython_config.py
 __marimo__/
 
 
-# ── Docs gerados ──────────────────────────────────────────────────
+
+# Docs gerados
 docs/_build/
 /site
 
 
-# ════════════════════════════════════════════════════════════════
-#  DADOS — regras específicas do projeto
-# ════════════════════════════════════════════════════════════════
 
-# Raw: tudo ignorado (arquivos grandes de snapshots)
+#  DADOS — regras específicas do projeto
+
+# Raw: tudo ignorado por UF (arquivos grandes de snapshots)
+data/raw/
 data/raw/**/*.csv
 data/raw/**/*.json
 data/raw/**/*.jsonl
 data/raw/**/*.zip
 data/raw/**/*.parquet
 
-# Processed: ignorado por padrão (gerado pelo pipeline)
-data/processed/*.csv
-data/processed/*.parquet
+# Processed: ignorado por UF (gerado pelo pipeline)
+data/processed/
+data/processed/**/*.csv
+data/processed/**/*.parquet
 
-# Outputs: ignorado por padrão
-data/outputs/*.csv
+# Outputs: ignorado por UF
+data/outputs/
+data/outputs/**/*.csv
+data/outputs/outputs_backups
 
-# Exceções: score final vai pro git (é o artefato público do projeto)
+# Exceções: artefatos públicos do projeto vão pro git
 !data/outputs/score_municipios_pb.csv
-!data/processed/municipios_pb_tabela.csv
 !data/outputs/score_municipios_pb_pncp.csv
-
-# devcontainer
-.devcontainer/
+!data/processed/municipios_pb_tabela.csv
 
 # Score duplicado em processed
 data/processed/score_municipios_pb.csv
+
+# devcontainer
+.devcontainer/
 
 # GeoJSON do app: pequeno o suficiente para versionar
 # app/data/pb_score.geojson   ← não ignorado (641 KB, aceitável)
 
 
-# ════════════════════════════════════════════════════════════════
+#  dbt
+dbt/dbt_packages/
+dbt/target/
+dbt/logs/
+dbt/profiles.yml
+
+
 #  SCRIPTS TEMPORÁRIOS / DIAGNÓSTICO
-# ════════════════════════════════════════════════════════════════
 diagnostico*.py
 teste*.py
 verificar_*.py
@@ -125,7 +141,8 @@ treewriter.py
 verifica.py
 
 
-# ── Misc ──────────────────────────────────────────────────────────
+
+# Misc
 *.log
 *.manifest
 *.spec
@@ -137,14 +154,19 @@ celerybeat.pid
 db.sqlite3
 db.sqlite3-journal
 
-# ════════════════════════════════════════════════════════════════
+
 #  FRONTEND (Next.js)
-# ════════════════════════════════════════════════════════════════
 frontend/.next/
 frontend/node_modules/
 frontend/.env.local
 frontend/.env*.local
 
+
 # Outputs gerados pelo backtest
 data/outputs/*.txt
 data/outputs/outputs_backups/
+
+
+# Credenciais GCP — nunca no repositório
+gcp-credentials.json
+*.json.key

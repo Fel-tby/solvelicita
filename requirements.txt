@@ -74,3 +74,7 @@ urllib3==2.6.3
 watchdog==6.0.0
 websockets==15.0.1
 xyzservices==2025.11.0
+google-cloud-bigquery
+google-cloud-bigquery-storage
+pyarrow
+pandas-gbq
