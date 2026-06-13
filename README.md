@@ -14,7 +14,7 @@
 
 ## Inteligência Fiscal e Solvência
 
-Esta aplicação é o componente técnico responsável pela inteligência de dados do ecossistema **SolveLicita**. Sua função é automatizar o ciclo completo de análise de risco fiscal de todos os municípios brasileiros, transformando dados públicos brutos em um Score de Solvência padronizado e acionável. Para isso, o pipeline executa um fluxo contínuo que coleta informações de múltiplas fontes oficiais via APIs, estrutura e consolida registros contábeis complexos através de camadas de modelagem SQL e aplica pós-processadores analíticos em Python para o cálculo final dos indicadores. Essa automação traduz relatórios técnicos dispersos em uma resposta direta sobre a capacidade real de pagamento de cada prefeitura, servindo como a base de dados fundamental para a plataforma web do SolveLicita.
+Esta aplicação é o componente técnico responsável pelo calculo de risco da plataforma **SolveLicita**. Sua função é automatizar o ciclo completo de análise de risco fiscal de todos os municípios brasileiros, transformando dados públicos brutos em um Score de Solvência padronizado e acionável. Para isso, o pipeline executa um fluxo contínuo que coleta informações de múltiplas fontes oficiais via APIs, estrutura e consolida registros contábeis complexos através de camadas de modelagem SQL e aplica pós-processadores analíticos em Python para o cálculo final dos indicadores. Essa automação traduz relatórios técnicos dispersos em uma resposta direta sobre a capacidade real de pagamento de cada prefeitura, servindo como a base de dados fundamental para a plataforma web do SolveLicita.
 
 ---
 
